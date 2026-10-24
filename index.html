@@ -10,7 +10,7 @@
     <canvas id="fx-canvas"></canvas>
 
     <!-- ====================================================================
-         MINIMALIST TOP BAR (FAQQAT KERAKLI MA'LUMOT)
+         MINIMALIST TOP BAR
          ==================================================================== -->
     <header class="top-navbar">
         <div class="brand-logo">
@@ -18,33 +18,37 @@
             <span>4 KO'ZIR</span>
         </div>
 
-        <!-- O'yin holati (Raund va kimning navbati) -->
         <div class="top-center-status">
-            <span class="round-tag" id="hud-round-badge">0-Raund</span>
-            <span class="turn-text" id="turn-status-banner">O'yin boshlanmoqda...</span>
+            <span class="round-tag" id="hud-round-badge">Masta Tanlash</span>
+            <span class="turn-text" id="turn-status-banner">Stoldagi 4 ta kartadan o'zingizga masta tanlang</span>
         </div>
 
-        <!-- Faqat 3 ta toza tugma -->
         <div class="top-nav-actions">
+            <button class="nav-btn nav-btn-gold hidden" id="btn-fast-finish-round" title="Joriy o'yinni tezkor yakunlash">⏩ O'yinni Tezkor Tugatish</button>
             <button class="nav-btn" id="btn-toggle-sound" title="Ovozni yoqish/o'chirish">🔊</button>
             <button class="nav-btn" id="btn-open-rules">📜 Qoidalar</button>
-            <button class="nav-btn nav-btn-gold" id="btn-new-game-top">🔄 Yangi O'yin</button>
+            <button class="nav-btn nav-btn-gold" id="btn-new-game-top">🔄 Boshidan</button>
         </div>
     </header>
 
     <!-- ====================================================================
-         TOZA, KENG YASHIL KARTA STOLI (FULL SCREEN)
+         YASHIL KARTA STOLI (KIRISHDA HAM TO'G'RIDAN-TO'G'RI STOL KO'RINADI!)
          ==================================================================== -->
     <main class="table-stage">
         <div class="casino-table">
 
-            <!-- KOLODA (Chap yuqori burchakda — hech kimga xalaqit bermaydi) -->
-            <div class="corner-pile talon-corner">
-                <div class="talon-stack" id="talon-stack"></div>
-                <div class="pile-label">Koloda: <strong id="talon-count-badge">12</strong></div>
+            <!-- KOLODA (Chap yuqori burchakda: 0-O'yinda ostida 1 ta ochiq ko'zir ko'rinadi, 1-O'yindan boshlab yopiq!) -->
+            <div class="corner-pile talon-corner" id="talon-corner-box">
+                <div class="talon-wrapper">
+                    <!-- 0-O'yinda (Oddiy Durakda) koloda ostidan chiqib turadigan 1 ta ochiq ko'zir karta -->
+                    <div class="open-ground-trump hidden" id="open-ground-trump"></div>
+                    <!-- Ustidagi yopiq koloda -->
+                    <div class="talon-stack" id="talon-stack"></div>
+                </div>
+                <div class="pile-label" id="talon-label-text">Koloda: <strong id="talon-count-badge">36</strong></div>
             </div>
 
-            <!-- BITA (O'ng yuqori burchakda — hech kimga xalaqit bermaydi) -->
+            <!-- BITA (O'ng yuqori burchakda) -->
             <div class="corner-pile bita-corner">
                 <div class="bita-stack empty-pile" id="bita-stack">
                     <span>BITA</span>
@@ -58,12 +62,12 @@
             <div class="player-seat seat-top" id="player-seat-2">
                 <div class="player-badge">
                     <div class="player-info-line">
-                        <span class="player-name">Ulug'bek</span>
-                        <span class="seat-trump-badge"></span>
+                        <span class="player-name">Ulug'bek (To'g'rida)</span>
+                        <span class="seat-trump-badge">Tanlanmoqda...</span>
                         <span class="seat-role-pill"></span>
                     </div>
                     <div class="player-sub-line">
-                        <span class="seat-card-count">6 karta</span>
+                        <span class="seat-card-count"></span>
                         <span class="trump-NextBurn"></span>
                     </div>
                 </div>
@@ -76,11 +80,11 @@
             <div class="player-seat seat-left" id="player-seat-1">
                 <div class="player-badge">
                     <div class="player-info-line">
-                        <span class="player-name">Sardor</span>
-                        <span class="seat-trump-badge"></span>
+                        <span class="player-name">Sardor (Chapda)</span>
+                        <span class="seat-trump-badge">Tanlanmoqda...</span>
                     </div>
                     <div class="player-sub-line">
-                        <span class="seat-card-count">6 karta</span>
+                        <span class="seat-card-count"></span>
                         <span class="seat-role-pill"></span>
                         <span class="trump-NextBurn"></span>
                     </div>
@@ -94,11 +98,11 @@
             <div class="player-seat seat-right" id="player-seat-3">
                 <div class="player-badge">
                     <div class="player-info-line">
-                        <span class="player-name">Jasur</span>
-                        <span class="seat-trump-badge"></span>
+                        <span class="player-name">Jasur (O'ngda)</span>
+                        <span class="seat-trump-badge">Tanlanmoqda...</span>
                     </div>
                     <div class="player-sub-line">
-                        <span class="seat-card-count">6 karta</span>
+                        <span class="seat-card-count"></span>
                         <span class="seat-role-pill"></span>
                         <span class="trump-NextBurn"></span>
                     </div>
@@ -107,10 +111,53 @@
             </div>
 
             <!-- ============================================================
-                 STOL MARKAZI (KARTALAR TASHLANADIGAN TOZA MAYDON)
+                 STOL MARKAZI:
+                 1) Boshida 4 ta masta kartasi yotadi (Tanlash uchun)
+                 2) Tanlangach, o'yin kartalari tashlanadigan maydon bo'ladi
                  ============================================================ -->
             <div class="battle-arena-center">
-                <div id="table-center-hint" class="center-hint-text"></div>
+                <!-- 1-QADAM: Stolda yotgan 4 ta masta kartasini tanlash (Popup emas, stolning o'zida!) -->
+                <div id="on-table-suit-picker" class="table-suit-picker">
+                    <div class="picker-title">
+                        ✨ O'yin oldidan o'zingizga masta tanlang (Qolganlarini 3 ta o'yinchi oladi):
+                    </div>
+                    <div class="picker-cards-row">
+                        <div class="table-pick-card" data-suit="diamonds">
+                            <div class="pick-card-inner color-red">
+                                <span class="pick-corner">T♦</span>
+                                <span class="pick-sym">♦</span>
+                                <span class="pick-name">G'isht</span>
+                            </div>
+                        </div>
+                        <div class="table-pick-card" data-suit="spades">
+                            <div class="pick-card-inner color-black">
+                                <span class="pick-corner">T♠</span>
+                                <span class="pick-sym">♠</span>
+                                <span class="pick-name">Tabbon</span>
+                            </div>
+                        </div>
+                        <div class="table-pick-card" data-suit="hearts">
+                            <div class="pick-card-inner color-red">
+                                <span class="pick-corner">T♥</span>
+                                <span class="pick-sym">♥</span>
+                                <span class="pick-name">Yurak</span>
+                            </div>
+                        </div>
+                        <div class="table-pick-card" data-suit="clubs">
+                            <div class="pick-card-inner color-black">
+                                <span class="pick-corner">T♣</span>
+                                <span class="pick-sym">♣</span>
+                                <span class="pick-name">Paxta</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="picker-sub">
+                        Tanlaganingizdan so'ng darhol <strong>Oddiy Durak (1 ta umumiy ko'zir bilan)</strong> boshlanadi — kim yutsa keyingi o'yinni boshlaydi!
+                    </div>
+                </div>
+
+                <!-- 2-QADAM: O'yin davomidagi o'rtadagi kartalar -->
+                <div id="table-center-hint" class="center-hint-text hidden"></div>
                 <div class="battle-pairs-grid" id="battle-pairs-grid"></div>
             </div>
 
@@ -118,15 +165,13 @@
                  PASTDAGI O'YINCHI: SIZ (Seat 0)
                  ============================================================ -->
             <div class="player-seat seat-bottom" id="player-seat-0">
-                <!-- Sizning qo'lingizdagi kartalar -->
                 <div class="human-hand-cards" id="human-hand-cards"></div>
 
-                <!-- Pastki ixcham boshqaruv qatori -->
                 <div class="human-bottom-bar">
                     <div class="player-badge human-badge">
                         <div class="player-info-line">
                             <span class="player-name">👤 Siz</span>
-                            <span class="seat-trump-badge"></span>
+                            <span class="seat-trump-badge">Tanlanmoqda...</span>
                             <span class="seat-role-pill"></span>
                             <span class="seat-card-count" style="display:none"></span>
                             <span class="trump-NextBurn"></span>
@@ -151,49 +196,12 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- ====================================================================
-         MODAL 1: KO'ZIR TANLASH VA BOSHLASH
-         ==================================================================== -->
-    <div class="modal-backdrop" id="modal-start">
-        <div class="modal-window">
-            <div class="modal-header-center">
-                <h1>♦♠ 4 KO'ZIR ♥♣</h1>
-                <p>O'zingizga shaxsiy ko'zir tanlang:</p>
-            </div>
-
-            <div class="suit-selection-grid">
-                <div class="suit-choice-card selected" data-suit="diamonds">
-                    <div class="suit-big-icon color-red">♦</div>
-                    <div class="suit-choice-name">G'isht</div>
-                </div>
-                <div class="suit-choice-card" data-suit="spades">
-                    <div class="suit-big-icon" style="color:#63b3ed">♠</div>
-                    <div class="suit-choice-name">Tabbon</div>
-                </div>
-                <div class="suit-choice-card" data-suit="hearts">
-                    <div class="suit-big-icon color-red">♥</div>
-                    <div class="suit-choice-name">Yurak</div>
-                </div>
-                <div class="suit-choice-card" data-suit="clubs">
-                    <div class="suit-big-icon" style="color:#4fd1c5">♣</div>
-                    <div class="suit-choice-name">Paxta</div>
-                </div>
-            </div>
-
-            <div class="selected-suit-banner" id="selected-suit-preview"></div>
-
-            <button class="primary-cta-btn" id="btn-start-game">
-                🚀 O'YINNI BOSHLASH
-            </button>
-        </div>
-    </div>
-
-    <!-- ====================================================================
-         MODAL 2: RAUND YAKUNI (YUTQAZGANNING KARTASI CHIQISHI)
+         RAUND YAKUNI OYNASI
          ==================================================================== -->
     <div class="modal-backdrop hidden" id="modal-round-end">
         <div class="modal-window">
             <div class="modal-header-center">
-                <h2 id="round-end-title">Raund Yakunlandi</h2>
+                <h2 id="round-end-title">O'yin Yakunlandi</h2>
                 <p id="round-end-subtitle"></p>
             </div>
 
@@ -208,7 +216,7 @@
     </div>
 
     <!-- ====================================================================
-         MODAL 3: QOIDALAR
+         QOIDALAR OYNASI
          ==================================================================== -->
     <div class="modal-backdrop hidden" id="modal-rules">
         <div class="modal-window">
@@ -217,10 +225,11 @@
             </div>
 
             <div class="rules-simple-list">
-                <p><strong>1. Shaxsiy Ko'zir:</strong> Har bir o'yinchining o'z tanlagan mastasi o'zining ko'ziri hisoblanadi. Yerdagi oxirgi karta ko'rinmaydi.</p>
-                <p><strong>2. Kesishtirish:</strong> Boshqa masta kelsa — kattarog'i bilan yoki o'z ko'ziringiz bilan kesasiz. O'z ko'ziringiz kelsa — faqat kattaroq o'z ko'ziringiz bilan kesasiz yoki ko'tarasiz.</p>
-                <p><strong>3. Yurish va Podkid:</strong> Soat mili bo'ylab yuriladi. Avval O'ng tarafdagi odam tashlaydi, u «Pas» degach Chap tarafdagi odam tashlaydi (O'ngdagi qayta tashlay olmaydi). To'g'ridagi odam umuman tashlay olmaydi.</p>
-                <p><strong>4. Karta Chiqishi (6 ➔ Tuz):</strong> Har o'yinda oxirgi qolgan (yutqazgan) odamning o'z ko'ziri 6 dan boshlab Tuzgacha bittadan o'yindan butunlay chiqib ketadi. Kartalar kamayganda izma-iz (6-6-6-5, 6-6-5-5...) tarqatiladi.</p>
+                <p><strong>1. Masta Tanlash va Boshlang'ich Durak:</strong> Avval 4 ta o'yinchi stoldan o'ziga masta (♦, ♠, ♥, ♣) tanlab oladi. So'ng boshida 36 ta karta bilan <strong>oddiy Durak</strong> o'ynaladi — koloda ostida 1 ta umumiy ko'zir ochiq turadi. Bu o'yinda kim yutsa, keyingi asosiy o'yinni shu boshlaydi, oxirgi yutqazgan esa kartalarni tarqatadi.</p>
+                <p><strong>2. Asosiy O'yin (Shaxsiy Ko'zirlar):</strong> Keyingi o'yindan boshlab yerdagi oxirgi karta ko'rinmaydi! Har kim boshida tanlagan mastasi o'zining shaxsiy ko'ziri bo'ladi.</p>
+                <p><strong>3. Kesishtirish:</strong> Boshqa masta kelsa — kattarog'i bilan yoki o'z ko'ziringiz bilan kesasiz. O'z ko'ziringiz kelsa — faqat kattaroq o'z ko'ziringiz bilan kesasiz yoki ko'tarasiz.</p>
+                <p><strong>4. Yurish va Podkid:</strong> Soat mili bo'ylab yuriladi. Avval O'ng tarafdagi odam tashlaydi, u «Pas» degach Chap tarafdagi odam tashlaydi (O'ngdagi qayta tashlay olmaydi). To'g'ridagi odam umuman tashlay olmaydi.</p>
+                <p><strong>5. Karta Chiqishi (6 ➔ Tuz):</strong> Asosiy o'yinlarda yutqazgan odamning o'z ko'ziri 6 dan Tuzgacha bittadan o'yindan butunlay chiqib ketadi (va kartalar kamayganda 6-6-6-5, 6-6-5-5 bo'lib izma-iz tarqatiladi).</p>
             </div>
 
             <button class="primary-cta-btn" id="btn-close-rules">

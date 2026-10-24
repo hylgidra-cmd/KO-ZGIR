@@ -1,6 +1,6 @@
 /**
  * 4 KO'ZIR: OMON QOLISH — Tactical AI Bot Engine
- * Smart decision-making for Attack, Defense, and Podkidnoy phases
+ * Uses shared trump suit in 0-O'yin (Oddiy Durak) and personal trump suit in 1+ O'yin!
  */
 
 const PHASE_ENUM = (typeof window !== 'undefined' && window.BOUT_PHASE)
@@ -8,12 +8,6 @@ const PHASE_ENUM = (typeof window !== 'undefined' && window.BOUT_PHASE)
     : (typeof require !== 'undefined' ? require('./engine.js').BOUT_PHASE : {});
 
 class BotAI {
-    /**
-     * Decides the next move for `botId` based on current engine state
-     * @param {FourTrumpsEngine} engine
-     * @param {number} botId
-     * @returns {Object} { action: 'attack'|'defend'|'pass'|'take', cardId?: string }
-     */
     static decideMove(engine, botId) {
         const bot = engine.players[botId];
         const defender = engine.players[engine.defenderId];
@@ -23,15 +17,17 @@ class BotAI {
             return null;
         }
 
+        const botTrump = engine.getEffectiveTrumpSuit(botId);
+        const defTrump = engine.getEffectiveTrumpSuit(engine.defenderId);
+
         // 1. INITIAL ATTACK
         if (phase === PHASE_ENUM.INITIAL_ATTACK && botId === engine.primaryAttackerId) {
             const candidates = [...bot.hand];
             if (candidates.length === 0) return null;
 
-            // Score each card for leading an attack (lower score = better to throw)
             candidates.sort((a, b) => {
-                return BotAI.scoreInitialAttackCard(a, bot, defender, engine) -
-                       BotAI.scoreInitialAttackCard(b, bot, defender, engine);
+                return BotAI.scoreInitialAttackCard(a, bot, botTrump, defTrump, engine) -
+                       BotAI.scoreInitialAttackCard(b, bot, botTrump, defTrump, engine);
             });
 
             return {
@@ -53,19 +49,17 @@ class BotAI {
                 return { action: 'take' };
             }
 
-            // Sort valid defense cards from cheapest to most expensive
             validDefenseCards.sort((a, b) => {
-                const aIsOwnTrump = a.suit === bot.trumpSuit ? 1 : 0;
-                const bIsOwnTrump = b.suit === bot.trumpSuit ? 1 : 0;
-                if (aIsOwnTrump !== bIsOwnTrump) return aIsOwnTrump - bIsOwnTrump;
+                const aIsTrump = a.suit === botTrump ? 1 : 0;
+                const bIsTrump = b.suit === botTrump ? 1 : 0;
+                if (aIsTrump !== bIsTrump) return aIsTrump - bIsTrump;
                 return a.rank - b.rank;
             });
 
             const bestDefCard = validDefenseCards[0];
-            const isOwnTrump = bestDefCard.suit === bot.trumpSuit;
+            const isTrump = bestDefCard.suit === botTrump;
 
-            // Only consider taking instead of wasting Ace/King of own trump early in the round
-            if (isOwnTrump && openPair.attack.suit !== bot.trumpSuit) {
+            if (isTrump && openPair.attack.suit !== botTrump) {
                 if (bestDefCard.rank === 14 && engine.deck.length > 8 && engine.tablePairs.length === 1 && bot.hand.length <= 5) {
                     return { action: 'take' };
                 }
@@ -89,22 +83,18 @@ class BotAI {
                 return { action: 'pass' };
             }
 
-            // Filter out cards the bot shouldn't waste on podkid
             const worthwhilePodkids = validPodkids.filter(c => {
-                const isOwnTrump = c.suit === bot.trumpSuit;
-                const isDefTrump = c.suit === defender.trumpSuit;
+                const isOwnTrump = c.suit === botTrump;
+                const isDefTrump = c.suit === defTrump;
 
-                // Never throw own personal trump as podkid unless deck is empty and bot is about to finish hand
                 if (isOwnTrump) {
                     return engine.deck.length === 0 && bot.hand.length <= 2;
                 }
 
-                // Avoid feeding Defender a high card of Defender's own trump early on
                 if (isDefTrump && c.rank >= 12 && engine.deck.length > 4) {
                     return false;
                 }
 
-                // Early game: don't throw Aces/Kings of neutral suits unless we want to pressure
                 if (c.rank >= 14 && engine.deck.length > 6) {
                     return false;
                 }
@@ -126,18 +116,14 @@ class BotAI {
         return null;
     }
 
-    static scoreInitialAttackCard(card, bot, defender, engine) {
+    static scoreInitialAttackCard(card, bot, botTrump, defTrump, engine) {
         let score = card.rank;
 
-        // Heavily penalize throwing own personal trump first unless only trumps remain
-        if (card.suit === bot.trumpSuit) {
+        if (card.suit === botTrump) {
             score += 100;
         }
 
-        // If card is Defender's personal trump:
-        // Low defender trumps (6, 7, 8) are actually clever probes because Defender CANNOT cut them with non-trumps
-        // and must spend a higher personal trump! High defender trumps (V, D, K, T) are bad to gift to Defender.
-        if (card.suit === defender.trumpSuit) {
+        if (card.suit === defTrump) {
             if (card.rank >= 11) {
                 score += 45;
             } else {
@@ -145,8 +131,7 @@ class BotAI {
             }
         }
 
-        // Bonus if bot has multiple cards of the same rank (pairs/triples) for follow-up podkid!
-        const sameRankCount = bot.hand.filter(c => c.rank === card.rank && c.suit !== bot.trumpSuit).length;
+        const sameRankCount = bot.hand.filter(c => c.rank === card.rank && c.suit !== botTrump).length;
         if (sameRankCount >= 2) {
             score -= 3;
         }

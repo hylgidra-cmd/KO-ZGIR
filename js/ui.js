@@ -1,5 +1,5 @@
 /**
- * 4 KO'ZIR — Clean, Uncluttered UI Controller
+ * 4 KO'ZIR — On-Table Suit Picker -> Round 0 (Oddiy Durak with 1 open trump on ground) -> Round 1+ (Personal Trumps)
  */
 
 const API_BASE = window.location.protocol.startsWith('http')
@@ -18,15 +18,17 @@ class GameUI {
         this.initDOMReferences();
         this.bindEvents();
         this.initParticleCanvas();
-        this.renderSuitSelectionModal();
+        this.showTableSuitPicker();
     }
 
     initDOMReferences() {
         this.elRoundBadge = document.getElementById('hud-round-badge');
         this.elTurnBanner = document.getElementById('turn-status-banner');
 
+        this.elSuitPicker = document.getElementById('on-table-suit-picker');
+        this.elOpenGroundTrump = document.getElementById('open-ground-trump');
         this.elTalonStack = document.getElementById('talon-stack');
-        this.elTalonCount = document.getElementById('talon-count-badge');
+        this.elTalonLabel = document.getElementById('talon-label-text');
         this.elBitaStack = document.getElementById('bita-stack');
         this.elBitaCount = document.getElementById('bita-count-badge');
         this.elBattlePairs = document.getElementById('battle-pairs-grid');
@@ -34,8 +36,8 @@ class GameUI {
 
         this.btnPass = document.getElementById('btn-action-pass');
         this.btnTake = document.getElementById('btn-action-take');
+        this.btnFastFinish = document.getElementById('btn-fast-finish-round');
 
-        this.modalStart = document.getElementById('modal-start');
         this.modalRoundEnd = document.getElementById('modal-round-end');
         this.modalRules = document.getElementById('modal-rules');
 
@@ -43,24 +45,20 @@ class GameUI {
     }
 
     bindEvents() {
-        document.querySelectorAll('.suit-choice-card').forEach(cardEl => {
-            cardEl.addEventListener('click', () => {
-                window.soundFX.playPass();
-                document.querySelectorAll('.suit-choice-card').forEach(c => c.classList.remove('selected'));
-                cardEl.classList.add('selected');
+        // Clicking one of the 4 suit cards directly on the table
+        document.querySelectorAll('.table-pick-card').forEach(cardEl => {
+            cardEl.addEventListener('click', (e) => {
+                window.soundFX.init();
+                window.soundFX.playCardPlace(true);
                 this.selectedSuit = cardEl.dataset.suit;
-                this.renderSuitSelectionModal();
+                this.spawnBurstParticles(e.clientX, e.clientY, '#ecc94b', 24);
+                this.startWithChosenSuit(this.selectedSuit);
             });
-        });
-
-        document.getElementById('btn-start-game').addEventListener('click', () => {
-            window.soundFX.init();
-            window.soundFX.playVictory();
-            this.startNewTournament();
         });
 
         this.btnPass.addEventListener('click', () => this.onHumanPass());
         this.btnTake.addEventListener('click', () => this.onHumanTake());
+        this.btnFastFinish.addEventListener('click', () => this.onFastFinishCurrentRound());
 
         document.getElementById('btn-open-rules').addEventListener('click', () => {
             window.soundFX.playPass();
@@ -77,7 +75,8 @@ class GameUI {
 
         document.getElementById('btn-new-game-top').addEventListener('click', () => {
             if (this.botTimer) clearTimeout(this.botTimer);
-            this.modalStart.classList.remove('hidden');
+            this.modalRoundEnd.classList.add('hidden');
+            this.showTableSuitPicker();
         });
 
         document.getElementById('btn-next-round').addEventListener('click', () => {
@@ -87,26 +86,103 @@ class GameUI {
         });
     }
 
-    renderSuitSelectionModal() {
-        const suitObj = window.CardsAPI.SUITS[this.selectedSuit];
-        const previewEl = document.getElementById('selected-suit-preview');
-        if (previewEl && suitObj) {
-            previewEl.innerHTML = `Sizning shaxsiy ko'ziringiz: <strong style="color:${suitObj.accent}">${suitObj.symbol} ${suitObj.name}</strong>`;
+    /**
+     * Step 1: Displays the 4 suit cards directly on the center of the green table (No popup!)
+     */
+    showTableSuitPicker() {
+        if (this.botTimer) clearTimeout(this.botTimer);
+        this.engine.resetTournament();
+
+        this.elRoundBadge.textContent = '1-Qadam: Masta Tanlash';
+        this.elTurnBanner.textContent = "Stoldagi 4 ta kartadan o'zingizga masta tanlang";
+
+        this.elSuitPicker.classList.remove('hidden');
+        this.elTableCenterHint.classList.add('hidden');
+        this.elBattlePairs.innerHTML = '';
+        this.btnFastFinish.classList.add('hidden');
+
+        this.elOpenGroundTrump.classList.add('hidden');
+        this.elTalonStack.classList.remove('empty-pile');
+        this.elTalonStack.innerHTML = `<div class="talon-layer"></div><div class="talon-secret-lock">36 KARTA</div>`;
+        this.elTalonLabel.innerHTML = `Koloda: <strong>36</strong>`;
+
+        this.elBitaStack.classList.add('empty-pile');
+        this.elBitaCount.textContent = '0';
+
+        const humanContainer = document.getElementById('human-hand-cards');
+        if (humanContainer) humanContainer.innerHTML = '';
+
+        this.btnPass.disabled = true;
+        this.btnTake.disabled = true;
+
+        for (let s = 0; s < 4; s++) {
+            const seatEl = document.getElementById(`player-seat-${s}`);
+            if (!seatEl) continue;
+            seatEl.classList.remove('active-turn-seat', 'eliminated-seat');
+            const badge = seatEl.querySelector('.seat-trump-badge');
+            if (badge) badge.textContent = 'Masta tanlanmoqda...';
+            const role = seatEl.querySelector('.seat-role-pill');
+            if (role) { role.className = 'seat-role-pill'; role.textContent = ''; }
+            const cnt = seatEl.querySelector('.seat-card-count');
+            if (cnt) cnt.textContent = '';
+            const burn = seatEl.querySelector('.trump-NextBurn');
+            if (burn) burn.textContent = '';
+            const fan = seatEl.querySelector('.bot-card-fan');
+            if (fan) fan.innerHTML = '';
         }
     }
 
-    startNewTournament() {
-        if (this.botTimer) clearTimeout(this.botTimer);
-        this.modalStart.classList.add('hidden');
-        this.modalRoundEnd.classList.add('hidden');
+    /**
+     * Step 2: Human picked their suit on the table -> Other 3 players get remaining suits -> Start 0-O'yin (Oddiy Durak)!
+     */
+    startWithChosenSuit(suit) {
+        this.elSuitPicker.classList.add('hidden');
+        this.btnFastFinish.classList.remove('hidden');
 
         this.engine.resetTournament();
-        this.engine.setupPlayers(this.selectedSuit);
-        // Start with 0-raund (36 cards)
-        this.engine.startRound(0, 0, 3);
+        this.engine.setupPlayers(suit);
+        // Start Round 0: Classic Durak with 1 open trump card on the ground!
+        this.engine.startRound(0);
+
+        const openCard = this.engine.openTrumpCard;
+        const starter = this.engine.players[this.engine.primaryAttackerId];
+        if (openCard) {
+            this.showToast(
+                `Masta tanlandi! Boshlang'ich Oddiy Durak: Yerdagi umumiy ko'zir — ${openCard.symbol} ${openCard.suitName}. ${starter.name} birinchi yuradi!`
+            );
+        }
 
         this.renderAll();
         this.scheduleBotTurnIfNeeded();
+    }
+
+    /**
+     * Fast-forwards the current round using real AI moves so the user can test transitioning from 0-O'yin to 1-O'yin anytime
+     */
+    onFastFinishCurrentRound() {
+        if (this.engine.phase === window.BOUT_PHASE.SELECT_SUIT) return;
+        if (this.botTimer) clearTimeout(this.botTimer);
+
+        let safety = 0;
+        while (
+            this.engine.phase !== window.BOUT_PHASE.ROUND_OVER &&
+            this.engine.phase !== window.BOUT_PHASE.GAME_OVER &&
+            safety < 2000
+        ) {
+            safety++;
+            const turnId = this.engine.getCurrentTurnPlayerId();
+            if (turnId === null) break;
+            const move = window.BotAI.decideMove(this.engine, turnId);
+            if (!move) break;
+
+            if (move.action === 'attack') this.engine.playAttackCard(turnId, move.cardId);
+            else if (move.action === 'defend') this.engine.playDefenseCard(turnId, move.cardId);
+            else if (move.action === 'pass') this.engine.declarePass(turnId);
+            else if (move.action === 'take') this.engine.defenderTakesCards();
+        }
+
+        this.renderAll();
+        this.showRoundEndModal();
     }
 
     renderAll() {
@@ -118,9 +194,12 @@ class GameUI {
     }
 
     renderTopHUD() {
-        this.elRoundBadge.textContent = this.engine.roundNumber === 0
-            ? '0-O\'yin (Boshlang\'ich)'
-            : `${this.engine.roundNumber}-O\'yin`;
+        if (this.engine.roundNumber === 0) {
+            const sharedSuitObj = window.CardsAPI.SUITS[this.engine.sharedTrumpSuit || 'diamonds'];
+            this.elRoundBadge.innerHTML = `Boshlang'ich Durak (Ko'zir: ${sharedSuitObj.symbol} ${sharedSuitObj.name})`;
+        } else {
+            this.elRoundBadge.textContent = `${this.engine.roundNumber}-O'yin (Shaxsiy Ko'zirlar)`;
+        }
 
         const turnPlayerId = this.engine.getCurrentTurnPlayerId();
         const turnPlayer = turnPlayerId !== null ? this.engine.players[turnPlayerId] : null;
@@ -181,10 +260,11 @@ class GameUI {
                 metaEl.textContent = `${p.hand.length} ta karta`;
             }
 
-            // Show compact lost trump status
             const burnEl = seatEl.querySelector('.trump-NextBurn');
             if (burnEl) {
-                if (p.lostTrumps.length === 0) {
+                if (this.engine.roundNumber === 0) {
+                    burnEl.textContent = `Tanlagan: ${suitObj.symbol}`;
+                } else if (p.lostTrumps.length === 0) {
                     burnEl.textContent = `Ko'zir: 9/9`;
                 } else {
                     const lastLost = p.lostTrumps[p.lostTrumps.length - 1];
@@ -238,15 +318,49 @@ class GameUI {
         return { text: '', cssClass: '' };
     }
 
+    /**
+     * Renders the Koloda:
+     * - In Round 0 (Oddiy Durak): Shows the 1 Open Trump Card (`openTrumpCard`) sticking out sideways from under the deck!
+     * - In Round 1+ (Asosiy O'yin): Hides the bottom card (`🔒 YOPIQ KOLODA`)!
+     */
     renderTableCenter() {
         const deckLen = this.engine.deck.length;
-        this.elTalonCount.textContent = deckLen;
-        if (deckLen === 0) {
-            this.elTalonStack.classList.add('empty-pile');
-            this.elTalonStack.innerHTML = `<span>0</span>`;
+
+        if (this.engine.roundNumber === 0 && this.engine.openTrumpCard && deckLen > 0) {
+            // Round 0 (Oddiy Durak): Show the face-up trump card under the deck!
+            this.elOpenGroundTrump.classList.remove('hidden');
+            this.elOpenGroundTrump.innerHTML = window.CardsAPI.createCardHTML(this.engine.openTrumpCard, {
+                isPersonalTrump: true
+            });
+            const sObj = window.CardsAPI.SUITS[this.engine.openTrumpCard.suit];
+            this.elTalonLabel.innerHTML = `Yerdagi Ko'zir: <strong class="color-${sObj.color}">${this.engine.openTrumpCard.label}${sObj.symbol}</strong> (${deckLen} ta)`;
+
+            if (deckLen === 1) {
+                // Only the open bottom card remains
+                this.elTalonStack.classList.add('hidden');
+            } else {
+                this.elTalonStack.classList.remove('hidden', 'empty-pile');
+                this.elTalonStack.innerHTML = `<div class="talon-layer"></div><div class="talon-secret-lock">${deckLen} TA</div>`;
+            }
         } else {
-            this.elTalonStack.classList.remove('empty-pile');
-            this.elTalonStack.innerHTML = `<div class="talon-layer"></div><div class="talon-secret-lock">🔒 YOPIQ</div>`;
+            // Round 1+ (or empty deck in Round 0): Bottom card is HIDDEN!
+            this.elOpenGroundTrump.classList.add('hidden');
+            this.elTalonStack.classList.remove('hidden');
+
+            if (deckLen === 0) {
+                this.elTalonStack.classList.add('empty-pile');
+                this.elTalonStack.innerHTML = `<span>0</span>`;
+                if (this.engine.roundNumber === 0 && this.engine.sharedTrumpSuit) {
+                    const sObj = window.CardsAPI.SUITS[this.engine.sharedTrumpSuit];
+                    this.elTalonLabel.innerHTML = `Ko'zir: <strong>${sObj.symbol} ${sObj.name}</strong> (0 ta)`;
+                } else {
+                    this.elTalonLabel.innerHTML = `Koloda: <strong>0</strong>`;
+                }
+            } else {
+                this.elTalonStack.classList.remove('empty-pile');
+                this.elTalonStack.innerHTML = `<div class="talon-layer"></div><div class="talon-secret-lock">🔒 YOPIQ<br/>KOLODA</div>`;
+                this.elTalonLabel.innerHTML = `Yopiq Koloda: <strong>${deckLen}</strong>`;
+            }
         }
 
         const bitaLen = this.engine.bitaPile.length;
@@ -265,20 +379,19 @@ class GameUI {
         }
 
         this.elTableCenterHint.classList.add('hidden');
-        const defender = this.engine.players[this.engine.defenderId];
+        const defTrump = this.engine.getEffectiveTrumpSuit(this.engine.defenderId);
 
-        // Clean pairs on table — NO dashed box covering the card!
         this.elBattlePairs.innerHTML = this.engine.tablePairs.map((pair, idx) => {
-            const attIsDefTrump = pair.attack.suit === defender.trumpSuit;
+            const attIsTrump = pair.attack.suit === defTrump;
             const attackHTML = window.CardsAPI.createCardHTML(pair.attack, {
-                isPersonalTrump: attIsDefTrump
+                isPersonalTrump: attIsTrump
             });
 
             let defenseHTML = '';
             if (pair.defense) {
-                const defIsOwnTrump = pair.defense.suit === defender.trumpSuit;
+                const defIsTrump = pair.defense.suit === defTrump;
                 defenseHTML = `<div class="pair-defense-slot">${window.CardsAPI.createCardHTML(pair.defense, {
-                    isPersonalTrump: defIsOwnTrump
+                    isPersonalTrump: defIsTrump
                 })}</div>`;
             }
 
@@ -300,15 +413,16 @@ class GameUI {
             return;
         }
         if (human.outOfRound) {
-            container.innerHTML = `<div class="center-hint-text">🏆 Siz qutuldingiz! Botlar tugatmoqda...</div>`;
+            container.innerHTML = `<div class="center-hint-text">🏆 Siz qutuldingiz! Botlar o'yinni yakunlamoqda...</div>`;
             return;
         }
 
         const isMyTurn = this.engine.getCurrentTurnPlayerId() === 0;
         const openPair = this.engine.tablePairs.find(p => p.defense === null);
+        const myEffectiveTrump = this.engine.getEffectiveTrumpSuit(0);
 
         container.innerHTML = human.hand.map(card => {
-            const isPersonalTrump = card.suit === human.trumpSuit;
+            const isTrump = card.suit === myEffectiveTrump;
             let isPlayable = false;
 
             if (isMyTurn) {
@@ -324,7 +438,7 @@ class GameUI {
             }
 
             return window.CardsAPI.createCardHTML(card, {
-                isPersonalTrump,
+                isPersonalTrump: isTrump,
                 isPlayable
             });
         }).join('');
@@ -422,7 +536,8 @@ class GameUI {
     scheduleBotTurnIfNeeded() {
         if (this.botTimer) clearTimeout(this.botTimer);
         if (this.engine.phase === window.BOUT_PHASE.ROUND_OVER ||
-            this.engine.phase === window.BOUT_PHASE.GAME_OVER) {
+            this.engine.phase === window.BOUT_PHASE.GAME_OVER ||
+            this.engine.phase === window.BOUT_PHASE.SELECT_SUIT) {
             return;
         }
 
@@ -430,7 +545,7 @@ class GameUI {
         if (turnPlayerId === null || turnPlayerId === 0) return;
 
         const humanOut = this.engine.players[0].outOfRound || this.engine.players[0].eliminated;
-        const delay = humanOut ? 220 : 700;
+        const delay = humanOut ? 220 : 680;
 
         this.botTimer = setTimeout(() => {
             this.executeBotTurn(turnPlayerId);
@@ -503,15 +618,19 @@ class GameUI {
             btnNext.textContent = `🔄 Yangi O'yin Boshlash`;
         } else if (this.engine.roundNumber === 0) {
             window.soundFX.playVictory();
-            titleEl.textContent = `0-O'yin Yakunlandi`;
-            subtitleEl.innerHTML = `Keyingi o'yinni boshlaydi: <strong>${winner.name}</strong> | Kartalarni tarqatadi: <strong>${loser.name}</strong>`;
-            ceremonyBox.innerHTML = '';
-            btnNext.textContent = `➡️ Asosiy O'yinni Boshlash`;
+            titleEl.textContent = `🏁 Boshlang'ich Durak Yakunlandi!`;
+            subtitleEl.innerHTML = `🥇 Keyingi o'yinni birinchi boshlaydi: <strong>${winner.name}</strong><br/>🃏 Kartalarni yig'ib tarqatadi: <strong>${loser.name}</strong>`;
+            ceremonyBox.innerHTML = `
+                <div style="background:rgba(16,185,129,0.15);border:1px solid #34d399;padding:12px;border-radius:10px;margin-bottom:14px;font-size:0.86rem;color:#d1fae5;text-align:center;">
+                    Endi <strong>Asosiy O'yin</strong> boshlanadi: Yerdagi oxirgi karta ko'rinmaydi va har kim boshida tanlagan mastasi o'zining <strong>shaxsiy ko'ziri</strong> bo'ladi!
+                </div>
+            `;
+            btnNext.textContent = `➡️ Asosiy O'yinni Boshlash (${winner.name} yuradi)`;
         } else {
             window.soundFX.playCardBurn();
             const burned = this.engine.lastBurnedCard;
             titleEl.textContent = `${this.engine.roundNumber}-O'yin Yakunlandi`;
-            subtitleEl.innerHTML = `Yutdi: <strong>${winner.name}</strong> | Yutqazdi: <strong>${loser.name}</strong>`;
+            subtitleEl.innerHTML = `Yutdi (Boshlaydi): <strong>${winner.name}</strong> | Yutqazdi (Tarqatadi): <strong>${loser.name}</strong>`;
 
             if (burned) {
                 const burnedCardHTML = window.CardsAPI.createCardHTML(burned, { isPersonalTrump: true });
@@ -555,7 +674,7 @@ class GameUI {
 
     proceedToNextRound() {
         if (this.engine.phase === window.BOUT_PHASE.GAME_OVER) {
-            this.modalStart.classList.remove('hidden');
+            this.showTableSuitPicker();
             return;
         }
         const nextRoundNum = this.engine.roundNumber + 1;
@@ -573,7 +692,7 @@ class GameUI {
         toast.className = 'game-toast';
         toast.textContent = message;
         this.elToastContainer.appendChild(toast);
-        setTimeout(() => toast.remove(), 2500);
+        setTimeout(() => toast.remove(), 3000);
     }
 
     initParticleCanvas() {

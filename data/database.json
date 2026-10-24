@@ -1,6 +1,6 @@
 {
   "stats": {
-    "totalRoundsPlayed": 0,
+    "totalRoundsPlayed": 1,
     "totalTournamentsCompleted": 0,
     "totalTrumpsBurned": 0,
     "humanWins": 0,
@@ -8,21 +8,21 @@
       "diamonds": 1,
       "spades": 0,
       "hearts": 0,
-      "clubs": 0
+      "clubs": 1
     }
   },
   "leaderboard": [
     {
       "name": "Siz (Asosiy O'yinchi)",
-      "rating": 1500,
+      "rating": 1512,
       "wins": 0,
-      "roundsWon": 0,
+      "roundsWon": 1,
       "trumpsSaved": 9,
       "badge": "👑 Grandmaster"
     },
     {
       "name": "Jasur (O'ngda)",
-      "rating": 1420,
+      "rating": 1412,
       "wins": 0,
       "roundsWon": 0,
       "trumpsSaved": 9,
@@ -45,5 +45,16 @@
       "badge": "🛡️ Qalqon Sohibi"
     }
   ],
-  "matchHistory": []
+  "matchHistory": [
+    {
+      "id": 1792841970240,
+      "time": "16:39:30",
+      "roundNumber": 0,
+      "winnerName": "Siz",
+      "loserName": "Jasur (O'ngda)",
+      "burnedCardText": "0-Raund (Jazosiz)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 36
+    }
+  ]
 }

@@ -1,13 +1,17 @@
 /**
- * 4 KO'ZIR: OMON QOLISH — Core Game State Machine & Rules Engine (Full-Stack Isomorphic: Browser + Node.js Backend)
- * Implements 100% of the Technical Specification (TZ):
- * - 4 Players sitting clockwise: Bottom (0: Siz), Left (1: Chapdagi), Top (2: To'g'ridagi), Right (3: O'ngdagi)
- * - Personal Trump Suits for each player
- * - Izma-iz Tarqatish (Sequential round-robin dealing): when cards < 24, deals 6-6-6-5 -> 6-6-5-5 -> 6-5-5-5 -> 5-5-5-5 ...
- * - Defense cutting rules (own trump vs other suits)
- * - Strict Podkidnoy chain: Right Neighbor -> Pass (locked!) -> Left Neighbor -> Pass -> Bita
- * - Opposite Neighbor (To'g'ridagi) strictly blocked from throwing cards
- * - Survival Elimination: Round loser loses their personal trump cards in sequence 6, 7, 8, 9, 10, V, D, K, T
+ * 4 KO'ZIR: OMON QOLISH — Core Game State Machine & Rules Engine
+ * Flow:
+ * 1. Table Suit Selection: All 4 players pick their suit (♦, ♠, ♥, ♣) on the table.
+ * 2. 0-O'yin (Oddiy Durak):
+ *    - 36 cards, 6 cards dealt to each player.
+ *    - ONE trump card (openTrumpCard) is revealed face-up under the deck on the ground!
+ *    - All 4 players play classic Durak with that SINGLE shared trump suit (sharedTrumpSuit).
+ *    - Whoever wins 0-O'yin attacks first in 1-O'yin; whoever loses 0-O'yin deals 1-O'yin.
+ * 3. 1+ O'yin (Asosiy Shaxsiy Ko'zirlar O'yini):
+ *    - Bottom card on the ground is HIDDEN (ko'rinmaydi).
+ *    - Each player uses the personal suit they chose at the beginning as their personal trump!
+ *    - Loser of each round loses their personal trump card in order: 6 -> 7 -> 8 -> 9 -> 10 -> V -> D -> K -> T.
+ *    - Cards are dealt sequentially (izma-iz: 6-6-6-5 -> 6-6-5-5 -> 6-5-5-5 -> 5-5-5-5) as the deck shrinks.
  */
 
 const CardsRef = (typeof window !== 'undefined' && window.CardsAPI)
@@ -15,6 +19,7 @@ const CardsRef = (typeof window !== 'undefined' && window.CardsAPI)
     : (typeof require !== 'undefined' ? require('./cards.js') : null);
 
 const BOUT_PHASE = {
+    SELECT_SUIT: 'SELECT_SUIT',           // On-table suit selection before starting 0-O'yin
     INITIAL_ATTACK: 'INITIAL_ATTACK',     // Primary attacker (Right of defender) leads first card
     DEFENSE: 'DEFENSE',                   // Defender must beat the active attack card or Take
     PRIMARY_PODKID: 'PRIMARY_PODKID',     // Primary attacker can throw matching rank or Pass
@@ -30,11 +35,14 @@ class FourTrumpsEngine {
 
     resetTournament() {
         this.players = [];
-        this.eliminatedCards = new Set(); // e.g., "diamonds_6", "diamonds_7"
-        this.roundNumber = 0; // 0 = Qualification Round (0-Raund), 1+ = Survival Rounds
+        this.eliminatedCards = new Set();
+        this.roundNumber = 0; // 0 = Oddiy Durak (1 shared trump on ground), 1+ = Personal Trumps (hidden ground card)
         this.deck = [];
+        this.openTrumpCard = null;   // Face-up card under the deck in 0-O'yin (Oddiy Durak)
+        this.sharedTrumpSuit = null; // Shared trump suit in 0-O'yin
+
         this.bitaPile = [];
-        this.tablePairs = []; // Array of { attack: Card, defense: Card|null, thrownBy: playerId }
+        this.tablePairs = [];
 
         this.dealerId = 3;
         this.primaryAttackerId = 0;
@@ -44,15 +52,14 @@ class FourTrumpsEngine {
 
         this.primaryPassed = false;
         this.secondaryPassed = false;
-        this.phase = BOUT_PHASE.INITIAL_ATTACK;
+        this.phase = BOUT_PHASE.SELECT_SUIT;
 
-        this.roundWinnerId = null; // First player to empty hand in current round
+        this.roundWinnerId = null;
         this.roundFinishOrder = [];
         this.lastRoundLoserId = null;
         this.lastBurnedCard = null;
         this.tournamentWinnerId = null;
 
-        // Izma-iz tarqatish (6-6-6-5, 6-6-5-5, 6-5-5-5, 5-5-5-5) tracking
         this.lastDealDistribution = '6 - 6 - 6 - 6';
         this.lastDealDetails = [];
         this.totalCardsAtRoundStart = 36;
@@ -61,20 +68,16 @@ class FourTrumpsEngine {
     }
 
     /**
-     * Initializes the 4 players around the table clockwise:
-     * Seat 0 (Bottom): Human Player ("Siz")
-     * Seat 1 (Left):   Chapdagi Bot (Soat mili bo'yicha Sizdan keyingi)
-     * Seat 2 (Top):    To'g'ridagi Bot (Sizning ro'parangizda)
-     * Seat 3 (Right):  O'ngdagi Bot (Soat mili bo'yicha Sizdan oldingi - Sizga hujum qiluvchi)
+     * Step 1: Players choose their personal suits before 0-O'yin begins
      */
     setupPlayers(humanSuit = 'diamonds') {
         const allSuits = ['diamonds', 'spades', 'hearts', 'clubs'];
         const remainingSuits = allSuits.filter(s => s !== humanSuit);
 
         const botProfiles = [
-            { seat: 1, posLabel: 'Chap taraf', name: 'Sardor (Chapda)' },
-            { seat: 2, posLabel: "To'g'ri taraf", name: "Ulug'bek (To'g'rida)" },
-            { seat: 3, posLabel: "O'ng taraf", name: "Jasur (O'ngda)" }
+            { seat: 1, posLabel: 'Chap taraf', name: 'Sardor' },
+            { seat: 2, posLabel: "To'g'ri taraf", name: "Ulug'bek" },
+            { seat: 3, posLabel: "O'ng taraf", name: "Jasur" }
         ];
 
         this.players = [
@@ -87,7 +90,7 @@ class FourTrumpsEngine {
                 trumpSuit: humanSuit,
                 hand: [],
                 dealtCount: 0,
-                lostTrumps: [], // Array of ranks lost: [6, 7, ...]
+                lostTrumps: [],
                 eliminated: false,
                 outOfRound: false
             }
@@ -112,31 +115,15 @@ class FourTrumpsEngine {
     }
 
     /**
-     * Sets up a pre-configured late-game scenario where `burnCount` cards (default 13) have already been eliminated,
-     * so the deck has 23 cards left and immediately deals 6 - 6 - 6 - 5 (then 6-6-5-5 -> 6-5-5-5 -> 5-5-5-5)!
+     * Helper to get the effective trump suit for `playerId` in the current round:
+     * - In Round 0 (Oddiy Durak): Everyone uses `this.sharedTrumpSuit` (the face-up card on the ground)!
+     * - In Round 1+ (Asosiy O'yin): Each player uses their own `player.trumpSuit`!
      */
-    setupLateGameScenario(humanSuit = 'diamonds', burnCount = 13) {
-        this.resetTournament();
-        this.setupPlayers(humanSuit);
-
-        // Distribute `burnCount` losses across the 4 players (e.g. for 13: 3, 3, 4, 3 losses)
-        const ranksOrder = [6, 7, 8, 9, 10, 11, 12, 13, 14];
-        let burnedSoFar = 0;
-        let pIdx = 1; // Start burning from bots first so everyone still has trumps left
-        while (burnedSoFar < burnCount) {
-            const player = this.players[pIdx % 4];
-            const nextRank = ranksOrder.find(r => !player.lostTrumps.includes(r));
-            if (nextRank !== undefined && player.lostTrumps.length < 8) {
-                player.lostTrumps.push(nextRank);
-                this.eliminatedCards.add(`${player.trumpSuit}_${nextRank}`);
-                burnedSoFar++;
-            }
-            pIdx++;
-            if (pIdx > 100) break;
+    getEffectiveTrumpSuit(playerId) {
+        if (this.roundNumber === 0 && this.sharedTrumpSuit) {
+            return this.sharedTrumpSuit;
         }
-
-        this.addLog(`🧪 MAXSUS REJIM: O'yindan ${burnedSoFar} ta ko'zir chiqarildi (Kolodada ${36 - burnedSoFar} ta karta qoldi).`, 'burn');
-        this.startRound(burnedSoFar + 1, 0, 3);
+        return this.players[playerId].trumpSuit;
     }
 
     addLog(message, type = 'info') {
@@ -145,23 +132,14 @@ class FourTrumpsEngine {
         if (this.logs.length > 70) this.logs.pop();
     }
 
-    /**
-     * Returns active (non-eliminated from tournament) players in clockwise order
-     */
     getTournamentActivePlayers() {
         return this.players.filter(p => !p.eliminated);
     }
 
-    /**
-     * Returns players who still have cards in the current round
-     */
     getRoundActivePlayers() {
         return this.players.filter(p => !p.eliminated && !p.outOfRound);
     }
 
-    /**
-     * Finds the next player clockwise among players still active in the current round
-     */
     getNextRoundPlayerId(fromPlayerId, excludeId = null) {
         for (let step = 1; step < 4; step++) {
             const nextId = (fromPlayerId + step) % 4;
@@ -174,13 +152,9 @@ class FourTrumpsEngine {
     }
 
     /**
-     * Starts a round with strict IZMA-IZ (Sequential Round-Robin) card dealing!
-     * When total cards < 24:
-     * - 23 cards (13 eliminated): 6 - 6 - 6 - 5
-     * - 22 cards (14 eliminated): 6 - 6 - 5 - 5
-     * - 21 cards (15 eliminated): 6 - 5 - 5 - 5
-     * - 20 cards (16 eliminated): 5 - 5 - 5 - 5
-     * - 19 cards (17 eliminated): 5 - 5 - 5 - 4 ... and so on!
+     * Starts a round:
+     * - roundNum === 0: Oddiy Durak (36 cards, 6 each, 1 open trump card under the deck on the ground, lowest trump starts)
+     * - roundNum >= 1: Main 4 Ko'zir Survival Game (bottom card hidden, personal trumps active, winner of previous round starts, loser deals)
      */
     startRound(roundNum, starterId = null, dealerId = null) {
         this.roundNumber = roundNum;
@@ -190,11 +164,9 @@ class FourTrumpsEngine {
         this.roundFinishOrder = [];
         this.lastBurnedCard = null;
 
-        // Build deck excluding permanently burned trump cards
         this.deck = CardsRef.createDeck(this.eliminatedCards);
         this.totalCardsAtRoundStart = this.deck.length;
 
-        // Reset player round state
         for (const p of this.players) {
             p.hand = [];
             p.dealtCount = 0;
@@ -203,24 +175,12 @@ class FourTrumpsEngine {
 
         const activePlayers = this.getTournamentActivePlayers();
 
-        // Determine starter and dealer
-        if (starterId === null) {
-            starterId = activePlayers[0].id;
-        }
-        if (dealerId === null) {
+        if (dealerId === null || this.players[dealerId].eliminated) {
             dealerId = activePlayers[activePlayers.length - 1].id;
         }
-
-        if (this.players[starterId].eliminated) {
-            starterId = activePlayers[0].id;
-        }
-        if (this.players[dealerId].eliminated) {
-            dealerId = activePlayers[activePlayers.length - 1].id;
-        }
-
         this.dealerId = dealerId;
 
-        // Determine clockwise dealing order starting from player after Dealer, ending with Dealer
+        // Clockwise dealing order starting from player after Dealer, ending with Dealer
         const dealOrderIds = [];
         for (let step = 1; step <= 4; step++) {
             const pid = (this.dealerId + step) % 4;
@@ -240,7 +200,7 @@ class FourTrumpsEngine {
             }
         }
 
-        // Record the exact Izma-iz Dealing Distribution (e.g., "6 - 6 - 6 - 5")
+        // Record Izma-iz Dealing Distribution (e.g., "6 - 6 - 6 - 5")
         const distCounts = dealOrderIds.map(pid => this.players[pid].dealtCount);
         this.lastDealDistribution = distCounts.join(' - ');
         this.lastDealDetails = dealOrderIds.map(pid => ({
@@ -249,7 +209,32 @@ class FourTrumpsEngine {
             count: this.players[pid].dealtCount
         }));
 
-        // Sort hands and check if anyone got 0 cards
+        // ROUND 0 (ODDIY DURAK): Reveal 1 face-up trump card at the bottom of the deck (index 0, since pop() draws from end)!
+        if (roundNum === 0) {
+            this.openTrumpCard = this.deck.length > 0 ? this.deck[0] : null;
+            this.sharedTrumpSuit = this.openTrumpCard ? this.openTrumpCard.suit : 'diamonds';
+
+            // In Oddiy Durak, find who has the lowest card of `sharedTrumpSuit` to start first!
+            let lowestTrumpRank = 99;
+            let lowestHolderId = 0;
+            for (const p of activePlayers) {
+                for (const c of p.hand) {
+                    if (c.suit === this.sharedTrumpSuit && c.rank < lowestTrumpRank) {
+                        lowestTrumpRank = c.rank;
+                        lowestHolderId = p.id;
+                    }
+                }
+            }
+            starterId = lowestHolderId;
+        } else {
+            // ROUND 1+ (ASOSIY O'YIN): Bottom card is HIDDEN! Personal trumps are active!
+            this.openTrumpCard = null;
+            this.sharedTrumpSuit = null;
+            if (starterId === null || this.players[starterId].eliminated) {
+                starterId = activePlayers[0].id;
+            }
+        }
+
         for (const p of this.players) {
             this.sortPlayerHand(p);
             if (!p.eliminated && p.hand.length === 0) {
@@ -257,40 +242,20 @@ class FourTrumpsEngine {
             }
         }
 
-        const roundTitle = roundNum === 0
-            ? "0-RAUND (Saralash: G'olib keyingi o'yinni boshlaydi, mag'lub tarqatadi)"
-            : `${roundNum}-RAUND (Jami ${this.totalCardsAtRoundStart} ta karta | ${this.eliminatedCards.size} ta chiqqan)`;
-
-        const detailStr = this.lastDealDetails.map(d => `${d.name}: ${d.count} ta`).join(', ');
-        this.addLog(`━━━ ${roundTitle} ━━━`, 'round');
-        this.addLog(
-            `🃏 Izma-iz tarqatish (${this.lastDealDistribution}): [${detailStr}]. Yerdagi kolodada: ${this.deck.length} ta karta.`,
-            this.totalCardsAtRoundStart < 24 ? 'trump' : 'info'
-        );
-
         this.setupBout(starterId);
     }
 
-    getTotalHandCards() {
-        return this.players.reduce((sum, p) => sum + p.hand.length, 0);
-    }
-
-    /**
-     * Sorts a player's hand: non-trumps by suit & rank first, personal trumps on the right sorted by rank
-     */
     sortPlayerHand(player) {
+        const effTrump = this.getEffectiveTrumpSuit(player.id);
         player.hand.sort((a, b) => {
-            const aTrump = a.suit === player.trumpSuit ? 1 : 0;
-            const bTrump = b.suit === player.trumpSuit ? 1 : 0;
+            const aTrump = a.suit === effTrump ? 1 : 0;
+            const bTrump = b.suit === effTrump ? 1 : 0;
             if (aTrump !== bTrump) return aTrump - bTrump;
             if (a.suit !== b.suit) return a.suit.localeCompare(b.suit);
             return a.rank - b.rank;
         });
     }
 
-    /**
-     * Sets up a new Bout (Hujum to'qnashuvi) starting with attackerId attacking next clockwise active player
-     */
     setupBout(attackerId) {
         this.tablePairs = [];
         this.primaryPassed = false;
@@ -314,13 +279,11 @@ class FourTrumpsEngine {
         this.primaryAttackerId = actualAttackerId;
         this.defenderId = defenderId;
 
-        // Determine Left neighbor of Defender (Clockwise after Defender)
         const leftNeighborId = this.getNextRoundPlayerId(this.defenderId, this.primaryAttackerId);
         this.secondaryAttackerId = (leftNeighborId !== null && leftNeighborId !== this.primaryAttackerId && leftNeighborId !== this.defenderId)
             ? leftNeighborId
             : null;
 
-        // Determine Opposite player (To'g'ridagi odam) — anyone active who is neither Primary, Defender, nor Secondary
         this.oppositeBlockedId = null;
         for (const p of this.players) {
             if (!p.eliminated && !p.outOfRound &&
@@ -332,15 +295,8 @@ class FourTrumpsEngine {
         }
 
         this.phase = BOUT_PHASE.INITIAL_ATTACK;
-
-        const attName = this.players[this.primaryAttackerId].name;
-        const defName = this.players[this.defenderId].name;
-        this.addLog(`⚔️ Navbat: ${attName} ➡️ ${defName} ga hujum qiladi.`, 'turn');
     }
 
-    /**
-     * Returns whose turn it currently is to act
-     */
     getCurrentTurnPlayerId() {
         switch (this.phase) {
             case BOUT_PHASE.INITIAL_ATTACK:
@@ -355,9 +311,6 @@ class FourTrumpsEngine {
         }
     }
 
-    /**
-     * Returns all distinct card ranks currently visible on the table
-     */
     getTableRanks() {
         const ranks = new Set();
         for (const pair of this.tablePairs) {
@@ -367,9 +320,6 @@ class FourTrumpsEngine {
         return ranks;
     }
 
-    /**
-     * Checks if an attacker (Primary or Secondary) can throw `card` right now
-     */
     canAttackWithCard(playerId, card) {
         if (this.phase === BOUT_PHASE.INITIAL_ATTACK) {
             if (playerId !== this.primaryAttackerId) {
@@ -381,7 +331,7 @@ class FourTrumpsEngine {
         if (this.phase === BOUT_PHASE.PRIMARY_PODKID) {
             if (playerId !== this.primaryAttackerId) {
                 if (playerId === this.oppositeBlockedId) {
-                    return { valid: false, reason: "Siz himoyachining to'g'risida o'tiribsiz — karta tashlay olmaysiz!" };
+                    return { valid: false, reason: "To'g'rida o'tirgan odam karta tashlay olmaydi!" };
                 }
                 return { valid: false, reason: "Avval o'ng tarafdagi hujumchi pas deyishi kerak!" };
             }
@@ -391,9 +341,9 @@ class FourTrumpsEngine {
                     return { valid: false, reason: "Siz 'Pas' degansiz — endi qayta karta tashlay olmaysiz!" };
                 }
                 if (playerId === this.oppositeBlockedId) {
-                    return { valid: false, reason: "Siz himoyachining to'g'risida o'tiribsiz — karta tashlay olmaysiz!" };
+                    return { valid: false, reason: "To'g'rida o'tirgan odam karta tashlay olmaydi!" };
                 }
-                return { valid: false, reason: "Hozir chap tarafdagi o'yinchining podkid navbati!" };
+                return { valid: false, reason: "Hozir chap tarafdagi o'yinchining navbati!" };
             }
         } else {
             return { valid: false, reason: "Hozir hujum qilish bosqichi emas!" };
@@ -411,7 +361,7 @@ class FourTrumpsEngine {
         if (!tableRanks.has(card.rank)) {
             return {
                 valid: false,
-                reason: `Stolda «${card.label}» nominalidagi karta yo'q! Faqat stoldagi kartalarga mos karta tashlay olasiz.`
+                reason: `Stolda «${card.label}» yo'q! Faqat stoldagi kartalarga mos karta tashlay olasiz.`
             };
         }
 
@@ -419,18 +369,19 @@ class FourTrumpsEngine {
     }
 
     /**
-     * Checks if Defender can beat `attackCard` using `defenseCard` according to the exact Personal Trump rules
+     * Checks if Defender can beat `attackCard` using `defenseCard`:
+     * - In Round 0 (Oddiy Durak): `defTrump` is the single shared trump on the ground (`sharedTrumpSuit`).
+     * - In Round 1+ (Asosiy O'yin): `defTrump` is Defender's personal chosen suit (`defender.trumpSuit`).
      */
     canBeatCard(defenderId, attackCard, defenseCard) {
-        const defender = this.players[defenderId];
-        const defTrump = defender.trumpSuit;
+        const defTrump = this.getEffectiveTrumpSuit(defenderId);
 
-        // Case 1: Attack card is Defender's OWN personal trump suit!
+        // Case 1: Attack card is of Defender's effective trump suit
         if (attackCard.suit === defTrump) {
             if (defenseCard.suit !== defTrump) {
                 return {
                     valid: false,
-                    reason: `Bu sizning shaxsiy ko'ziringiz (${attackCard.symbol})! Uni faqat kattaroq ${attackCard.suitName} bilan kesa olasiz.`
+                    reason: `Ko'zirni (${attackCard.symbol}) faqat kattaroq ${attackCard.suitName} ko'ziri bilan kesa olasiz!`
                 };
             }
             if (defenseCard.rank > attackCard.rank) {
@@ -438,11 +389,11 @@ class FourTrumpsEngine {
             }
             return {
                 valid: false,
-                reason: `${defenseCard.fullName} hujumdagi ${attackCard.fullName} dan kichik! Kattaroq ko'zir kerak yoki ko'taring.`
+                reason: `${defenseCard.fullName} hujumdagi ${attackCard.fullName} dan kichik!`
             };
         }
 
-        // Case 2: Attack card is NOT Defender's personal trump suit
+        // Case 2: Attack card is NOT Defender's effective trump suit
         if (defenseCard.suit === attackCard.suit) {
             if (defenseCard.rank > attackCard.rank) {
                 return { valid: true };
@@ -454,19 +405,16 @@ class FourTrumpsEngine {
         }
 
         if (defenseCard.suit === defTrump) {
-            return { valid: true }; // Personal trump cuts any other suit!
+            return { valid: true };
         }
 
         const suitName = CardsRef.SUITS[defTrump].name;
         return {
             valid: false,
-            reason: `Kesishtirish uchun kattaroq ${attackCard.suitName} yoki shaxsiy ko'ziringiz (${suitName}) kerak!`
+            reason: `Kesishtirish uchun kattaroq ${attackCard.suitName} yoki ko'zir (${suitName}) kerak!`
         };
     }
 
-    /**
-     * Executes an attack or podkid move by `playerId` with `cardId`
-     */
     playAttackCard(playerId, cardId) {
         const player = this.players[playerId];
         const cardIdx = player.hand.findIndex(c => c.id === cardId);
@@ -486,18 +434,10 @@ class FourTrumpsEngine {
         });
 
         this.checkPlayerOut(player);
-
-        const isPodkid = this.tablePairs.length > 1;
-        const actionWord = isPodkid ? 'podkid tashladi' : 'yurdi';
-        this.addLog(`🃏 ${player.name} [${card.label}${card.symbol}] bilan ${actionWord}.`, 'attack');
-
         this.phase = BOUT_PHASE.DEFENSE;
         return { success: true, card };
     }
 
-    /**
-     * Executes a defense move by `defenderId` with `cardId` against the current unbeaten attack card
-     */
     playDefenseCard(defenderId, cardId) {
         if (this.phase !== BOUT_PHASE.DEFENSE || defenderId !== this.defenderId) {
             return { success: false, reason: 'Hozir sizning himoyalanish navbatingiz emas!' };
@@ -521,11 +461,8 @@ class FourTrumpsEngine {
         defender.hand.splice(cardIdx, 1);
         openPair.defense = defenseCard;
 
-        const usedOwnTrump = defenseCard.suit === defender.trumpSuit && openPair.attack.suit !== defender.trumpSuit;
-        this.addLog(
-            `🛡️ ${defender.name} [${openPair.attack.label}${openPair.attack.symbol}] ni [${defenseCard.label}${defenseCard.symbol}] ${usedOwnTrump ? "(SHAXSIY KO'ZIR!)" : ''} bilan kesdi!`,
-            usedOwnTrump ? 'trump' : 'defense'
-        );
+        const defTrump = this.getEffectiveTrumpSuit(defenderId);
+        const usedOwnTrump = defenseCard.suit === defTrump && openPair.attack.suit !== defTrump;
 
         this.checkPlayerOut(defender);
 
@@ -538,9 +475,6 @@ class FourTrumpsEngine {
         return { success: true, card: defenseCard, usedOwnTrump, bitaTriggered: false };
     }
 
-    /**
-     * Determines which attacker gets to podkid after Defender beats a card
-     */
     advanceToNextPodkidPhase() {
         const primary = this.players[this.primaryAttackerId];
 
@@ -564,19 +498,14 @@ class FourTrumpsEngine {
         this.resolveBita();
     }
 
-    /**
-     * Current attacker declares "PAS / Boshqa karta yo'q"
-     */
     declarePass(playerId) {
         if (this.phase === BOUT_PHASE.PRIMARY_PODKID && playerId === this.primaryAttackerId) {
             this.primaryPassed = true;
-            this.addLog(`✋ ${this.players[playerId].name} (O'ng taraf): «Menda boshqa yo'q (Pas)» — endi qayta yura olmaydi!`, 'pass');
 
             if (this.secondaryAttackerId !== null) {
                 const secondary = this.players[this.secondaryAttackerId];
                 if (secondary && !secondary.outOfRound && secondary.hand.length > 0) {
                     this.phase = BOUT_PHASE.SECONDARY_PODKID;
-                    this.addLog(`👉 Navbat ${secondary.name} (Chap taraf) ga o'tdi! Stoldagi kartalarga mos podkid tashlashi mumkin.`, 'turn');
                     return { success: true, bita: false };
                 }
             }
@@ -587,7 +516,6 @@ class FourTrumpsEngine {
 
         if (this.phase === BOUT_PHASE.SECONDARY_PODKID && playerId === this.secondaryAttackerId) {
             this.secondaryPassed = true;
-            this.addLog(`✋ ${this.players[playerId].name} (Chap taraf): «Menda ham boshqa yo'q (Bita!)»`, 'pass');
             this.resolveBita();
             return { success: true, bita: true };
         }
@@ -595,27 +523,19 @@ class FourTrumpsEngine {
         return { success: false, reason: 'Hozir pas berish navbati sizda emas!' };
     }
 
-    /**
-     * Defender decides to take all cards on the table ("Ko'tarish / Olish")
-     */
     defenderTakesCards() {
         if (this.phase !== BOUT_PHASE.DEFENSE) {
             return { success: false, reason: 'Hozir kartani olish vaqti emas!' };
         }
 
         const defender = this.players[this.defenderId];
-        const takenCards = [];
         for (const pair of this.tablePairs) {
-            if (pair.attack) takenCards.push(pair.attack);
-            if (pair.defense) takenCards.push(pair.defense);
+            if (pair.attack) defender.hand.push(pair.attack);
+            if (pair.defense) defender.hand.push(pair.defense);
         }
 
-        defender.hand.push(...takenCards);
         defender.outOfRound = false;
         this.sortPlayerHand(defender);
-
-        this.addLog(`📥 ${defender.name} stoldagi ${takenCards.length} ta kartani ko'tardi (oldi)!`, 'take');
-
         this.tablePairs = [];
 
         this.performDobor();
@@ -629,18 +549,12 @@ class FourTrumpsEngine {
         return { success: true, roundEnded: false };
     }
 
-    /**
-     * Resolves Bita (All cards on table are beaten and cleared)
-     */
     resolveBita() {
         for (const pair of this.tablePairs) {
             if (pair.attack) this.bitaPile.push(pair.attack);
             if (pair.defense) this.bitaPile.push(pair.defense);
         }
-        const count = this.tablePairs.length * 2;
         this.tablePairs = [];
-
-        this.addLog(`✨ BITA! Stoldagi ${count} ta karta yopilib chetga olindi.`, 'bita');
 
         this.performDobor();
 
@@ -651,12 +565,6 @@ class FourTrumpsEngine {
         this.setupBout(this.defenderId);
     }
 
-    /**
-     * Draws cards from the closed talon up to 6 cards per player in strict order:
-     * 1. Primary Attacker
-     * 2. Secondary Attacker
-     * 3. Defender
-     */
     performDobor() {
         const order = [this.primaryAttackerId, this.secondaryAttackerId, this.defenderId].filter(
             (id, idx, arr) => id !== null && arr.indexOf(id) === idx
@@ -678,25 +586,16 @@ class FourTrumpsEngine {
         }
     }
 
-    /**
-     * Checks if a player has emptied their hand when the deck is empty
-     */
     checkPlayerOut(player) {
         if (this.deck.length === 0 && player.hand.length === 0 && !player.outOfRound && !player.eliminated) {
             player.outOfRound = true;
             this.roundFinishOrder.push(player.id);
             if (this.roundWinnerId === null) {
                 this.roundWinnerId = player.id;
-                this.addLog(`🏆 ${player.name} kartalarini birinchi bo'lib tugatdi! (Keyingi raundni boshlaydi)`, 'win');
-            } else {
-                this.addLog(`✅ ${player.name} kartalarini tugatib raunddan qutuldi!`, 'info');
             }
         }
     }
 
-    /**
-     * Checks if the round is over (only 1 or 0 players left with cards when deck is empty)
-     */
     checkAndHandleRoundEnd() {
         if (this.deck.length > 0) return false;
 
@@ -711,29 +610,21 @@ class FourTrumpsEngine {
 
         this.phase = BOUT_PHASE.ROUND_OVER;
 
-        let loser = null;
-        if (remainingPlayers.length === 1) {
-            loser = remainingPlayers[0];
-        } else {
-            loser = this.players[this.defenderId];
-        }
-
+        let loser = remainingPlayers.length === 1 ? remainingPlayers[0] : this.players[this.defenderId];
         this.lastRoundLoserId = loser.id;
+
         if (this.roundWinnerId === null || this.roundWinnerId === loser.id) {
             const otherActive = this.getTournamentActivePlayers().find(p => p.id !== loser.id);
             this.roundWinnerId = otherActive ? otherActive.id : 0;
         }
 
+        // Round 0 (Oddiy Durak) has no card elimination — it only determines Winner (starts Round 1) and Loser (deals Round 1)
         if (this.roundNumber === 0) {
             this.lastBurnedCard = null;
-            this.addLog(
-                `🏁 0-Raund yakunlandi! G'olib: ${this.players[this.roundWinnerId].name} (1-raundni boshlaydi). Mag'lub: ${loser.name} (Diler bo'lib tarqatadi).`,
-                'round'
-            );
             return true;
         }
 
-        // SURVIVAL PENALTY: Eliminate the loser's lowest remaining personal trump card (6 -> 7 -> 8 -> 9 -> 10 -> V -> D -> K -> T)
+        // Round 1+: Eliminate loser's lowest remaining personal trump (6 -> 7 -> 8 -> 9 -> 10 -> V -> D -> K -> T)
         const allRanks = [6, 7, 8, 9, 10, 11, 12, 13, 14];
         const nextRankToBurn = allRanks.find(r => !loser.lostTrumps.includes(r));
 
@@ -745,7 +636,6 @@ class FourTrumpsEngine {
             const rankInfo = CardsRef.RANKS.find(r => r.value === nextRankToBurn);
             const suitInfo = CardsRef.SUITS[loser.trumpSuit];
 
-            // Compute what the NEXT round's Izma-iz dealing distribution will be!
             const nextTotalCards = 36 - this.eliminatedCards.size;
             const activeAfter = this.players.filter(p => !p.eliminated && p.lostTrumps.length < 9).length;
             const nextDist = [];
@@ -776,14 +666,8 @@ class FourTrumpsEngine {
                 nextDealPreview: nextDist.join(' - ')
             };
 
-            this.addLog(
-                `🔥 JAZO! ${loser.name} yutqazdi! Uning [${rankInfo.label}${suitInfo.symbol}] ko'ziri o'yindan CHIQARILDI! Keyingi raund tarqatilishi: ${nextDist.join(' - ')}`,
-                'burn'
-            );
-
             if (loser.lostTrumps.length >= 9) {
                 loser.eliminated = true;
-                this.addLog(`💀 ${loser.name} barcha 9 ta ko'zirini (6 dan Tuzgacha) yo'qotdi va O'YINDAN CHETLATILDI!`, 'burn');
             }
         }
 
@@ -791,52 +675,25 @@ class FourTrumpsEngine {
         if (survivors.length <= 1) {
             this.phase = BOUT_PHASE.GAME_OVER;
             this.tournamentWinnerId = survivors[0] ? survivors[0].id : 0;
-            this.addLog(`👑 MUTLAQ G'OLIB: ${this.players[this.tournamentWinnerId].name} barcha raqiblarni yengib chempion bo'ldi!`, 'win');
         }
 
         return true;
     }
 
-    /**
-     * Serializes full engine state for Backend REST API & Database persistence
-     */
     serializeState() {
         return {
             roundNumber: this.roundNumber,
             phase: this.phase,
+            openTrumpCard: this.openTrumpCard,
+            sharedTrumpSuit: this.sharedTrumpSuit,
             dealerId: this.dealerId,
             primaryAttackerId: this.primaryAttackerId,
             defenderId: this.defenderId,
             secondaryAttackerId: this.secondaryAttackerId,
             oppositeBlockedId: this.oppositeBlockedId,
-            primaryPassed: this.primaryPassed,
-            secondaryPassed: this.secondaryPassed,
             deckCount: this.deck.length,
             bitaCount: this.bitaPile.length,
-            totalCardsAtRoundStart: this.totalCardsAtRoundStart,
-            eliminatedCards: Array.from(this.eliminatedCards),
-            lastDealDistribution: this.lastDealDistribution,
-            lastDealDetails: this.lastDealDetails,
-            tablePairs: this.tablePairs,
-            roundWinnerId: this.roundWinnerId,
-            lastRoundLoserId: this.lastRoundLoserId,
-            lastBurnedCard: this.lastBurnedCard,
-            tournamentWinnerId: this.tournamentWinnerId,
-            players: this.players.map(p => ({
-                id: p.id,
-                seat: p.seat,
-                name: p.name,
-                posLabel: p.posLabel,
-                isHuman: p.isHuman,
-                trumpSuit: p.trumpSuit,
-                handCount: p.hand.length,
-                hand: p.hand,
-                dealtCount: p.dealtCount,
-                lostTrumps: p.lostTrumps,
-                eliminated: p.eliminated,
-                outOfRound: p.outOfRound
-            })),
-            logs: this.logs.slice(0, 30)
+            lastDealDistribution: this.lastDealDistribution
         };
     }
 }
