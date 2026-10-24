@@ -329,7 +329,18 @@ const server = http.createServer(async (req, res) => {
     });
 });
 
-server.listen(PORT, () => {
+process.on('uncaughtException', (err) => {
+    // Keep server alive on any stream/socket error
+});
+process.on('unhandledRejection', (err) => {
+    // Keep server alive
+});
+
+server.on('error', (err) => {
+    // Keep server alive
+});
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log('====================================================================');
     console.log(`🚀 4 KO'ZIR: OMON QOLISH — FULL-STACK SERVER ISHGA TUSHDI!`);
     console.log(`🌐 Web Manzil (Frontend): http://localhost:${PORT}`);
