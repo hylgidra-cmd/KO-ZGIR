@@ -1,0 +1,49 @@
+{
+  "stats": {
+    "totalRoundsPlayed": 0,
+    "totalTournamentsCompleted": 0,
+    "totalTrumpsBurned": 0,
+    "humanWins": 0,
+    "suitPickCounts": {
+      "diamonds": 1,
+      "spades": 0,
+      "hearts": 0,
+      "clubs": 0
+    }
+  },
+  "leaderboard": [
+    {
+      "name": "Siz (Asosiy O'yinchi)",
+      "rating": 1500,
+      "wins": 0,
+      "roundsWon": 0,
+      "trumpsSaved": 9,
+      "badge": "👑 Grandmaster"
+    },
+    {
+      "name": "Jasur (O'ngda)",
+      "rating": 1420,
+      "wins": 0,
+      "roundsWon": 0,
+      "trumpsSaved": 9,
+      "badge": "⚔️ Hujum Ustasi"
+    },
+    {
+      "name": "Sardor (Chapda)",
+      "rating": 1390,
+      "wins": 0,
+      "roundsWon": 0,
+      "trumpsSaved": 9,
+      "badge": "🎯 Podkid Qiroli"
+    },
+    {
+      "name": "Ulug'bek (To'g'rida)",
+      "rating": 1365,
+      "wins": 0,
+      "roundsWon": 0,
+      "trumpsSaved": 9,
+      "badge": "🛡️ Qalqon Sohibi"
+    }
+  ],
+  "matchHistory": []
+}

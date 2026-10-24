@@ -1,0 +1,18 @@
+{
+  "name": "four-trumps-survival",
+  "version": "2.0.0",
+  "description": "4 Ko'zir: Omon Qolish — Full-Stack Strategic Card Game (Backend + Frontend)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "card-game",
+    "durak-survival",
+    "4-kozir",
+    "uzbek-game"
+  ],
+  "author": "DBK KARTA",
+  "license": "MIT"
+}

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>4 KO'ZIR: OMON QOLISH — Full-Stack Royal Survival Card Game</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <!-- Ambient Gold Dust & Trump Burst Particle Canvas -->
+    <canvas id="fx-canvas"></canvas>
+
+    <!-- ====================================================================
+         TOP COMMAND & STATUS NAVBAR (FRONTEND + BACKEND TELEMETRY)
+         ==================================================================== -->
+    <header class="top-navbar">
+        <div class="brand-group">
+            <div class="brand-logo">
+                <span class="logo-suits"><span class="r">♦</span><span class="b">♠</span><span class="r">♥</span><span class="b">♣</span></span>
+                <span>4 KO'ZIR: SURVIVAL</span>
+            </div>
+
+            <div class="hud-stats-pills">
+                <div class="stat-pill round-pill" id="hud-round-badge">
+                    🏁 0-RAUND <span class="badge-sub">(Saralash)</span>
+                </div>
+                <div class="stat-pill" title="O'yinda qolgan jami kartalar soni">
+                    🃏 Koloda: <strong id="hud-deck-total">36 / 36</strong>
+                </div>
+                <div class="stat-pill deal-dist-pill" id="btn-open-dealing-sim" title="Izma-iz tarqatish (6-6-6-5 -> 6-6-5-5 -> 5-5-5-5) simulyatorini ochish uchun bosing!">
+                    🔄 Izma-iz: <strong id="hud-deal-dist">6 - 6 - 6 - 6</strong>
+                </div>
+                <div class="stat-pill" title="Yutqazganlarning o'yindan butunlay chiqqan ko'zirlari">
+                    🔥 Chiqqan: <strong id="hud-burned-count">0 ta</strong>
+                </div>
+                <div class="stat-pill backend-pill" id="btn-open-backend-stats" title="Backend Server & Ma'lumotlar bazasi statistikasi">
+                    <span class="status-dot" id="backend-status-dot"></span>
+                    <span id="backend-status-text">Backend: Ulanyapti...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-nav-actions">
+            <button class="nav-btn nav-btn-gold" id="btn-quick-round0" title="Joriy raundni tezkor simulyatsiya qilib natija va karta yonishini ko'rish">
+                ⏩ Raundni Avto-Yakunlash
+            </button>
+            <button class="nav-btn" id="btn-open-graveyard">
+                🛡️ Ko'zirlar (9/9)
+            </button>
+            <button class="nav-btn" id="btn-open-stats-top">
+                📊 Reyting & DB
+            </button>
+            <button class="nav-btn" id="btn-toggle-speed">
+                ⏱️ 1x
+            </button>
+            <button class="nav-btn" id="btn-toggle-sound">
+                🔊 Ovoz
+            </button>
+            <button class="nav-btn" id="btn-open-rules">
+                📜 Qoidalar
+            </button>
+            <button class="nav-btn nav-btn-gold" id="btn-new-game-top">
+                🔄 Yangi O'yin
+            </button>
+        </div>
+    </header>
+
+    <!-- ====================================================================
+         MAIN GAME ARENA (CASINO FELT TABLE + SIDEBAR)
+         ==================================================================== -->
+    <main class="arena-wrapper">
+        <section class="table-stage">
+            <div class="casino-table">
+                <!-- Subtle Watermark -->
+                <div class="table-watermark">
+                    4 KO'ZIR • SOAT MILI BO'YLAB YURISH ↻ • IZMA-IZ TARQATISH<br/>
+                    TO'G'RIDAGI ODAM YURA OLMAYDI • SHAXSIY KO'ZIRLAR
+                </div>
+
+                <!-- Dynamic Turn Banner -->
+                <div class="turn-banner-box">
+                    <div class="turn-main-pill" id="turn-status-banner">O'yin boshlanmoqda...</div>
+                    <div class="turn-sub-text" id="turn-status-sub">Soat mili bo'ylab yuriladi</div>
+                </div>
+
+                <!-- ========================================================
+                     SEAT 2: TOP (TO'G'RIDAGI O'YINCHI / OPPOSITE)
+                     ======================================================== -->
+                <div class="player-seat seat-top" id="player-seat-2">
+                    <div class="seat-hud-card">
+                        <div class="seat-header-row">
+                            <span class="seat-player-name">Ulug'bek (To'g'rida)</span>
+                            <span class="seat-trump-badge"></span>
+                        </div>
+                        <div class="seat-meta-row">
+                            <span class="seat-card-count">🃏 6 ta karta</span>
+                            <span class="seat-role-pill">🔒 TO'G'RIDA</span>
+                        </div>
+                        <div class="trump-survival-strip"></div>
+                        <div class="bot-card-fan"></div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     SEAT 1: LEFT (CHAPDAGI O'YINCHI — SOAT MILI BO'YICHA SIZDAN KEYIN)
+                     ======================================================== -->
+                <div class="player-seat seat-left" id="player-seat-1">
+                    <div class="seat-hud-card">
+                        <div class="seat-header-row">
+                            <span class="seat-player-name">Sardor (Chapda)</span>
+                            <span class="seat-trump-badge"></span>
+                        </div>
+                        <div class="seat-meta-row">
+                            <span class="seat-card-count">🃏 6 ta karta</span>
+                            <span class="seat-role-pill">⏳ CHAP TARAF</span>
+                        </div>
+                        <div class="trump-survival-strip"></div>
+                        <div class="bot-card-fan"></div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     SEAT 3: RIGHT (O'NGDAGI O'YINCHI — SIZGA BIRINCHI HUJUM QILUVCHI)
+                     ======================================================== -->
+                <div class="player-seat seat-right" id="player-seat-3">
+                    <div class="seat-hud-card">
+                        <div class="seat-header-row">
+                            <span class="seat-player-name">Jasur (O'ngda)</span>
+                            <span class="seat-trump-badge"></span>
+                        </div>
+                        <div class="seat-meta-row">
+                            <span class="seat-card-count">🃏 6 ta karta</span>
+                            <span class="seat-role-pill">⚔️ O'NG TARAF</span>
+                        </div>
+                        <div class="trump-survival-strip"></div>
+                        <div class="bot-card-fan"></div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     CENTER BATTLEFIELD (TALON, ACTIVE PAIRS, BITA)
+                     ======================================================== -->
+                <div class="table-center-zone">
+                    <!-- Closed Talon Deck (Bottom card NEVER revealed!) -->
+                    <div class="side-pile-box">
+                        <div class="pile-title">Koloda</div>
+                        <div class="talon-stack" id="talon-stack"></div>
+                        <div class="pile-count-badge" id="talon-count-badge">12 ta</div>
+                    </div>
+
+                    <!-- Active Attack & Defense Pairs -->
+                    <div class="battle-arena-center">
+                        <div id="table-center-hint"></div>
+                        <div class="battle-pairs-grid" id="battle-pairs-grid"></div>
+                    </div>
+
+                    <!-- Bita (Otboy) Pile -->
+                    <div class="side-pile-box">
+                        <div class="pile-title">Bita (Yopilgan)</div>
+                        <div class="bita-stack empty-pile" id="bita-stack">
+                            <div class="empty-deck-placeholder">BITA</div>
+                        </div>
+                        <div class="pile-count-badge" id="bita-count-badge">0 ta</div>
+                    </div>
+                </div>
+
+                <!-- ========================================================
+                     SEAT 0: BOTTOM (HUMAN PLAYER - SIZ)
+                     ======================================================== -->
+                <div class="player-seat seat-bottom" id="player-seat-0">
+                    <!-- Human Hand Cards -->
+                    <div class="human-hand-cards" id="human-hand-cards"></div>
+
+                    <!-- Human HUD & Action Controls -->
+                    <div class="human-bottom-bar">
+                        <div class="seat-hud-card" style="min-width: 320px;">
+                            <div class="seat-header-row">
+                                <span class="seat-player-name">👤 SIZ (Asosiy O'yinchi)</span>
+                                <span class="seat-trump-badge"></span>
+                            </div>
+                            <div class="seat-meta-row">
+                                <span class="seat-card-count">🃏 6 ta karta</span>
+                                <span class="seat-role-pill">⚔️ NAVBAT</span>
+                            </div>
+                            <div class="trump-survival-strip"></div>
+                        </div>
+
+                        <div class="human-controls-row">
+                            <button class="action-btn btn-smart-hint" id="btn-action-hint" title="Eng maqbul kartani avtomatik tanlash">
+                                💡 Aqlli Yurish
+                            </button>
+                            <button class="action-btn" id="btn-action-pass" disabled>
+                                ✋ Pas (Menda boshqa yo'q)
+                            </button>
+                            <button class="action-btn" id="btn-action-take" disabled>
+                                📥 Ko'tarish (Olish)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             RIGHT SIDEBAR: LIVE TACTICAL GUIDE, IZMA-IZ TARQATISH & LOG
+             ================================================================ -->
+        <aside class="sidebar-panel">
+            <div class="sidebar-card">
+                <h3>⚡ Oltin Qoidalar Eslatmasi</h3>
+                <ul class="rule-mini-list">
+                    <li>👑 <strong>Shaxsiy Ko'zir:</strong> Har kimning o'z mastasi ko'zir. Yerdagi oxirgi karta ko'rinmaydi!</li>
+                    <li>🔄 <strong>Izma-iz Tarqatish:</strong> Kartalar kamayganda (masalan 13 ta ketganda) aylanma tarzda <strong>6-6-6-5 ➔ 6-6-5-5 ➔ 6-5-5-5 ➔ 5-5-5-5</strong> bo'lib tarqatiladi!</li>
+                    <li>🛡️ <strong>O'z ko'ziringiz kelsa:</strong> Faqat kattaroq o'z ko'ziringiz bilan kesasiz yoki ko'tarasiz.</li>
+                    <li>👉 <strong>Podkid zanjiri:</strong> Avval <strong>O'ngdagi</strong> tashlaydi. U «Pas» degach, <strong>Chapdagi</strong> tashlaydi va O'ngdagi qayta yura olmaydi!</li>
+                    <li>🔒 <strong>To'g'ridagi odam:</strong> Himoyachining ro'parasida o'tirgan odam umuman karta tashlay olmaydi!</li>
+                </ul>
+            </div>
+
+            <div class="sidebar-card log-container-card">
+                <h3>📜 O'yin Tarixi (Live Log)</h3>
+                <div class="game-log-list" id="game-log-list"></div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ====================================================================
+         MODAL 1: START GAME & CHOOSE PERSONAL TRUMP SUIT + SCENARIO MODE
+         ==================================================================== -->
+    <div class="modal-backdrop" id="modal-start">
+        <div class="modal-window">
+            <div class="modal-header-center">
+                <h1>♦♠ 4 KO'ZIR: OMON QOLISH ♥♣</h1>
+                <p>Shaxsiy ko'zir mastangizni va o'yin rejimini tanlang (Full-Stack Web v2.0)</p>
+            </div>
+
+            <div class="suit-selection-grid">
+                <div class="suit-choice-card selected" data-suit="diamonds">
+                    <div class="suit-big-icon color-red">♦</div>
+                    <div class="suit-choice-name">G'isht</div>
+                    <div class="suit-choice-desc">Oltin qalqon va o'tkir kesish</div>
+                </div>
+                <div class="suit-choice-card" data-suit="spades">
+                    <div class="suit-big-icon" style="color:#63b3ed">♠</div>
+                    <div class="suit-choice-name">Tabbon</div>
+                    <div class="suit-choice-desc">Qora nayza va sovuqqon hujum</div>
+                </div>
+                <div class="suit-choice-card" data-suit="hearts">
+                    <div class="suit-big-icon color-red">♥</div>
+                    <div class="suit-choice-name">Yurak</div>
+                    <div class="suit-choice-desc">Qirollik yuragi va chidamlilik</div>
+                </div>
+                <div class="suit-choice-card" data-suit="clubs">
+                    <div class="suit-big-icon" style="color:#4fd1c5">♣</div>
+                    <div class="suit-choice-name">Paxta</div>
+                    <div class="suit-choice-desc">Taktik ustunlik va muvozanat</div>
+                </div>
+            </div>
+
+            <div class="selected-suit-banner" id="selected-suit-preview"></div>
+
+            <!-- Game Start Mode Selector -->
+            <div class="mode-selector-box">
+                <label class="mode-radio-card selected" data-mode="round0">
+                    <input type="radio" name="game_start_mode" value="round0" checked />
+                    <div>
+                        <strong>🏁 Klassik Boshlash (0-Raund Saralash + 36 Karta)</strong>
+                        <p>Avval 0-raund o'ynalib kim boshlashi va kim tarqatishi aniqlanadi, so'ngra 1-raunddan ko'zirlar yonadi.</p>
+                    </div>
+                </label>
+                <label class="mode-radio-card" data-mode="round1">
+                    <input type="radio" name="game_start_mode" value="round1" />
+                    <div>
+                        <strong>🔥 To'g'ridan-to'g'ri 1-Raund (Survival — 36 Karta)</strong>
+                        <p>Darhol asosiy survival o'yindan boshlash (har raundda yutqazganning ko'ziri 6 dan Tuzgacha chiqadi).</p>
+                    </div>
+                </label>
+                <label class="mode-radio-card" data-mode="late13">
+                    <input type="radio" name="game_start_mode" value="late13" />
+                    <div>
+                        <strong>🔄 «6 - 6 - 6 - 5» Izma-iz Tarqatish Rejimi (13 ta karta chiqqan holat)</strong>
+                        <p>13 ta karta o'yindan chiqib 23 ta karta qolgan holatdan boshlash: <strong>6-6-6-5 ➔ 6-6-5-5 ➔ 6-5-5-5 ➔ 5-5-5-5</strong> tarqatilishini bevosita ko'rish!</p>
+                    </div>
+                </label>
+            </div>
+
+            <button class="primary-cta-btn" id="btn-start-game">
+                🚀 O'YINNI BOSHLASH
+            </button>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 2: ROUND END & CARD BURNING CEREMONY + NEXT DEAL PREVIEW
+         ==================================================================== -->
+    <div class="modal-backdrop hidden" id="modal-round-end">
+        <div class="modal-window">
+            <div class="modal-header-center">
+                <h2 id="round-end-title">🔥 RAUND YAKUNLANDI!</h2>
+                <p id="round-end-subtitle"></p>
+            </div>
+
+            <div id="burned-card-ceremony"></div>
+
+            <h4 style="margin-bottom:10px; color:#ecc94b; font-size:0.86rem; text-transform:uppercase; letter-spacing:0.8px;">
+                🛡️ Barcha O'yinchilarning Ko'zirlari Holati (6 dan Tuzgacha):
+            </h4>
+            <div class="round-standings-grid" id="round-standings-grid"></div>
+
+            <button class="primary-cta-btn" id="btn-next-round">
+                ➡️ Keyingi Raundga O'tish
+            </button>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 3: ALL PLAYERS' 9 TRUMP CARDS GRAVEYARD & IZMA-IZ SIMULATOR
+         ==================================================================== -->
+    <div class="modal-backdrop hidden" id="modal-graveyard">
+        <div class="modal-window">
+            <div class="modal-header-center">
+                <h2>🛡️ SHAXSIY KO'ZIRLAR VA IZMA-IZ TARQATISH SIMULYATORI</h2>
+                <p>Kartalar kamayganda (23, 22, 21, 20...) o'yinchilarga izma-iz tarqatilishi:</p>
+            </div>
+
+            <!-- Interactive Izma-iz Dealing Quick Tester -->
+            <div class="dealing-sim-box">
+                <div class="sim-title">🧪 Izma-iz Tarqatishni Darhol Sinab Ko'rish (Test):</div>
+                <div class="sim-buttons-row">
+                    <button class="nav-btn sim-preset-btn" data-burn="12">12 ta chiqqan (24 karta: 6-6-6-6)</button>
+                    <button class="nav-btn nav-btn-gold sim-preset-btn" data-burn="13">13 ta chiqqan (23 karta: 6-6-6-5)</button>
+                    <button class="nav-btn nav-btn-gold sim-preset-btn" data-burn="14">14 ta chiqqan (22 karta: 6-6-5-5)</button>
+                    <button class="nav-btn nav-btn-gold sim-preset-btn" data-burn="15">15 ta chiqqan (21 karta: 6-5-5-5)</button>
+                    <button class="nav-btn nav-btn-gold sim-preset-btn" data-burn="16">16 ta chiqqan (20 karta: 5-5-5-5)</button>
+                    <button class="nav-btn sim-preset-btn" data-burn="17">17 ta chiqqan (19 karta: 5-5-5-4)</button>
+                </div>
+            </div>
+
+            <div id="graveyard-modal-body"></div>
+
+            <button class="primary-cta-btn" id="btn-close-graveyard">
+                Yopish
+            </button>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 4: BACKEND DATABASE STATS, ELO LEADERBOARD & MATCH HISTORY
+         ==================================================================== -->
+    <div class="modal-backdrop hidden" id="modal-backend-stats">
+        <div class="modal-window">
+            <div class="modal-header-center">
+                <h2>📊 BACKEND MA'LUMOTLAR BAZASI VA REYTING (ELO)</h2>
+                <p id="backend-modal-sub">Node.js REST API (`server.js`) va `data/database.json` orqali real vaqtda saqlanadi</p>
+            </div>
+
+            <div class="backend-kpi-grid" id="backend-kpi-grid"></div>
+
+            <h4 style="margin: 14px 0 8px; color:#ecc94b; font-size:0.85rem; text-transform:uppercase;">
+                🏆 O'yinchilar Reyting Jadvali (Leaderboard):
+            </h4>
+            <div id="backend-leaderboard-list" class="round-standings-grid"></div>
+
+            <h4 style="margin: 14px 0 8px; color:#ecc94b; font-size:0.85rem; text-transform:uppercase;">
+                📜 Oxirgi Raundlar Tarixi (Database Log):
+            </h4>
+            <div id="backend-history-list" class="backend-history-box"></div>
+
+            <button class="primary-cta-btn" id="btn-close-backend-stats">
+                Yopish
+            </button>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 5: FULL RULES MODAL
+         ==================================================================== -->
+    <div class="modal-backdrop hidden" id="modal-rules">
+        <div class="modal-window">
+            <div class="modal-header-center">
+                <h2>📜 «4 KO'ZIR: OMON QOLISH» TO'LIQ QOIDALARI</h2>
+                <p>100% original strategik karta o'yini</p>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.86rem; line-height:1.48; color:#e2e8f0; margin-bottom:20px;">
+                <div class="sidebar-card">
+                    <h3>1. Shaxsiy Ko'zir va Yopiq Koloda</h3>
+                    <p>4 ta o'yinchidan har biri bitta mastani tanlaydi (♦ G'isht, ♠ Tabbon, ♥ Yurak, ♣ Paxta). Yerdagi kolodaning eng oxirgi kartasi ko'rinmaydi — har kimning o'z mastasi o'zi uchun ko'zir hisoblanadi.</p>
+                </div>
+                <div class="sidebar-card">
+                    <h3>2. Izma-iz Tarqatish (6-6-6-5 ➔ 6-6-5-5 ➔ 6-5-5-5 ➔ 5-5-5-5)</h3>
+                    <p>Kartalar o'yindan chiqib kamayishi natijasida diler kartalarni o'yinchilarga soat mili bo'yicha <strong>izma-iz (bitta-bittadan aylantirib)</strong> tarqatadi. Masalan, 13 ta karta o'yindan chiqib 23 ta karta qolganda, 4 ta o'yinchiga <strong>6 - 6 - 6 - 5</strong> bo'lib tarqatiladi; yana 1 ta karta ketsa <strong>6 - 6 - 5 - 5</strong>, keyin <strong>6 - 5 - 5 - 5</strong>, keyin <strong>5 - 5 - 5 - 5</strong> va shu zaylda davom etadi!</p>
+                </div>
+                <div class="sidebar-card">
+                    <h3>3. Kesishtirish (Himoya) Qoidasi</h3>
+                    <p>• Boshqa masta bilan hujum qilinsa: shu mastaning kattarog'i bilan YOKI o'zingizning shaxsiy ko'ziringiz bilan kesa olasiz.<br/>
+                    • <strong>Sizning o'z ko'ziringiz bilan hujum qilinsa:</strong> uni faqat va faqat kattaroq o'z ko'ziringiz bilan kesishingiz mumkin (kichik ko'zirlar bilan kesib bo'lmaydi) yoki kartani ko'tarasiz!</p>
+                </div>
+                <div class="sidebar-card">
+                    <h3>4. Soat Mili Bo'yicha Yurish va Podkidnoy</h3>
+                    <p>• Himoyalanuvchiga faqat uning <strong>O'ng</strong> va <strong>Chap</strong> tarafidagi qo'shnilari karta tashlay oladi.<br/>
+                    • <strong>To'g'risida (ro'parasida)</strong> o'tirgan odam umuman karta tashlay olmaydi!<br/>
+                    • Avval O'ngdagi hujumchi tashlaydi. U «Pas (Yo'q)» degandan so'ng navbat Chapdagi odamga o'tadi. Shundan keyin stolda yangi karta paydo bo'lsa ham, O'ngdagi odam qayta karta tashlay olmaydi!</p>
+                </div>
+                <div class="sidebar-card">
+                    <h3>5. Jazo (6 dan Tuzgacha Chiqib Ketish)</h3>
+                    <p>Har bir raund oxirida qo'lida karta bilan qolib ketgan mag'lub o'yinchining shaxsiy ko'ziri kichigidan boshlab (6, 7, 8, 9, 10, Valet, Dama, Qirol, Tuz) o'yindan butunlay chiqarib yuboriladi. Barcha 9 ta ko'ziri tugagan o'yinchi o'yindan chiqadi!</p>
+                </div>
+            </div>
+
+            <button class="primary-cta-btn" id="btn-close-rules">
+                Tushunarli — O'yinga Qaytish
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/cards.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
