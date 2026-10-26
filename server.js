@@ -306,7 +306,13 @@ const server = http.createServer(async (req, res) => {
         safePath = '/index.html';
     }
 
-    const filePath = path.join(__dirname, safePath);
+    let filePath = path.join(__dirname, safePath);
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+        const publicPath = path.join(__dirname, 'public', safePath);
+        if (fs.existsSync(publicPath) && fs.statSync(publicPath).isFile()) {
+            filePath = publicPath;
+        }
+    }
     if (!filePath.startsWith(__dirname)) {
         res.writeHead(403);
         return res.end('Forbidden');

@@ -1,0 +1,1134 @@
+/* ============================================================================
+   4 KO'ZIR — TOZA, RAVON VA REAL KARTA STOLI DIZAYNI
+   ============================================================================ */
+
+:root {
+    --bg-dark: #070b12;
+    --felt-light: #134e3a;
+    --felt-mid: #0c3426;
+    --felt-dark: #061c14;
+    --wood-rail: #2b160c;
+    --wood-border: #542d1a;
+    --gold: #ecc94b;
+    --gold-light: #fef08a;
+    --suit-red: #dc2626;
+    --suit-black: #0f172a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-dark);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #f8fafc;
+}
+
+#fx-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 30;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.color-red { color: var(--suit-red) !important; }
+.color-black { color: var(--suit-black) !important; }
+
+/* ============================================================================
+   MINIMALIST TOP BAR
+   ============================================================================ */
+.top-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: rgba(8, 13, 22, 0.92);
+    border-bottom: 1px solid rgba(236, 201, 75, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 40;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--gold);
+}
+
+.logo-suits .r { color: #f87171; }
+.logo-suits .b { color: #93c5fd; }
+
+.top-center-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(236, 201, 75, 0.3);
+    padding: 5px 18px;
+    border-radius: 999px;
+}
+
+.round-tag {
+    background: var(--gold);
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 0.78rem;
+    padding: 2px 10px;
+    border-radius: 999px;
+}
+
+.turn-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.top-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #f1f5f9;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nav-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold-light);
+}
+
+.nav-btn-gold {
+    background: linear-gradient(135deg, #d69e2e, #975a16);
+    border-color: var(--gold-light);
+    color: #fff;
+}
+
+/* ============================================================================
+   FULL-SCREEN SPACIOUS GREEN FELT TABLE
+   ============================================================================ */
+.table-stage {
+    width: 100vw;
+    height: 100vh;
+    padding: 64px 28px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #142234 0%, #06090f 100%);
+}
+
+.casino-table {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 1420px;
+    border-radius: 130px;
+    background: radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt-mid) 65%, var(--felt-dark) 100%);
+    border: 14px solid var(--wood-rail);
+    box-shadow:
+        inset 0 0 70px rgba(0, 0, 0, 0.8),
+        inset 0 0 0 2px rgba(236, 201, 75, 0.3),
+        0 20px 50px rgba(0, 0, 0, 0.85),
+        0 0 0 2px var(--wood-border);
+}
+
+/* ============================================================================
+   CORNER PILES: KOLODA (WITH REAL DURAK OPEN TRUMP UNDERNEATH IN ROUND 0!)
+   ============================================================================ */
+.corner-pile {
+    position: absolute;
+    top: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 8;
+}
+
+.talon-corner {
+    left: 85px;
+}
+
+.bita-corner {
+    right: 85px;
+}
+
+.talon-wrapper {
+    position: relative;
+    width: 115px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* 0-O'yinda (Oddiy Durakda) koloda ostidan yonlama chiqib turadigan ochiq ko'zir karta! */
+.open-ground-trump {
+    position: absolute;
+    left: 26px;
+    top: 4px;
+    transform: rotate(90deg) scale(0.76);
+    transform-origin: center center;
+    z-index: 1;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+}
+
+.talon-stack, .bita-stack {
+    position: relative;
+    z-index: 2;
+    width: 64px;
+    height: 92px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1e3a8a, #0f172a);
+    border: 2px solid var(--gold);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    text-align: center;
+}
+
+.talon-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #1e3a8a, #0f172a);
+    border: 1.5px solid var(--gold);
+}
+
+.talon-secret-lock {
+    position: relative;
+    z-index: 3;
+    font-size: 0.62rem;
+    color: var(--gold-light);
+    padding: 2px 4px;
+    line-height: 1.2;
+}
+
+.empty-pile {
+    opacity: 0.25;
+    border: 1.5px dashed rgba(255, 255, 255, 0.4);
+    background: transparent;
+    box-shadow: none;
+}
+
+.pile-label {
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.88);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 3px 12px;
+    border-radius: 999px;
+}
+
+.pile-label strong {
+    color: var(--gold-light);
+}
+
+/* ============================================================================
+   ON-TABLE SUIT PICKER (STOL USTIDA 4 TA KARTADAN TANLASH — POPUP EMAS!)
+   ============================================================================ */
+.table-suit-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    background: rgba(6, 20, 14, 0.68);
+    border: 1.5px solid rgba(236, 201, 75, 0.4);
+    border-radius: 24px;
+    padding: 22px 32px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+    animation: popCardIn 0.25s ease-out;
+}
+
+.picker-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--gold-light);
+    text-align: center;
+}
+
+.picker-cards-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.table-pick-card {
+    width: 102px;
+    height: 146px;
+    background: linear-gradient(165deg, #ffffff 0%, #f5efe2 100%);
+    border-radius: 12px;
+    border: 2.5px solid #d69e2e;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+    padding: 8px;
+}
+
+.table-pick-card:hover {
+    transform: translateY(-16px) scale(1.08);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.8), 0 0 22px rgba(236, 201, 75, 0.8);
+}
+
+.pick-card-inner {
+    width: 100%;
+    height: 100%;
+    border: 1px dashed rgba(214, 158, 46, 0.55);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px;
+}
+
+.pick-corner {
+    align-self: flex-start;
+    font-size: 0.92rem;
+    font-weight: 900;
+}
+
+.pick-sym {
+    font-size: 3.1rem;
+    line-height: 1;
+}
+
+.pick-name {
+    font-size: 0.82rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(236, 201, 75, 0.25);
+    color: #1e293b;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.picker-sub {
+    font-size: 0.82rem;
+    color: #e2e8f0;
+    text-align: center;
+    max-width: 540px;
+    line-height: 1.4;
+}
+
+/* ============================================================================
+   SLEEK COMPACT PLAYER SEATS (TOP, LEFT, RIGHT, BOTTOM)
+   ============================================================================ */
+.player-seat {
+    position: absolute;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.seat-top {
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.seat-left {
+    left: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.seat-right {
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.seat-bottom {
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 900px;
+}
+
+.player-badge {
+    background: rgba(10, 17, 28, 0.86);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 7px 14px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    transition: all 0.25s ease;
+}
+
+.player-seat.active-turn-seat .player-badge {
+    border-color: var(--gold);
+    box-shadow: 0 0 18px rgba(236, 201, 75, 0.5);
+}
+
+.player-seat.eliminated-seat {
+    opacity: 0.35;
+    filter: grayscale(1);
+}
+
+.player-info-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+.seat-trump-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.seat-trump-badge .suit-sym {
+    background: #fff;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.92rem;
+}
+
+.player-sub-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #cbd5e1;
+}
+
+.seat-role-pill {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+.role-attacker { background: #ea580c; color: #fff; }
+.role-defender { background: #2563eb; color: #fff; }
+.role-secondary-active { background: #059669; color: #fff; }
+.role-secondary-wait { background: rgba(255,255,255,0.12); color: #cbd5e1; }
+.role-passed-locked { background: rgba(100,116,139,0.35); color: #94a3b8; }
+.role-opposite-blocked { background: rgba(220,38,38,0.3); color: #fca5a5; }
+.role-safe { background: #16a34a; color: #fff; }
+.role-eliminated { background: #7f1d1d; color: #fca5a5; }
+
+.trump-NextBurn {
+    font-size: 0.72rem;
+    color: var(--gold-light);
+    font-weight: 600;
+}
+
+/* Bot Fanned Cards */
+.bot-card-fan {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 34px;
+}
+
+.mini-card-back {
+    width: 22px;
+    height: 32px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #1e3a8a, #0f172a);
+    border: 1.5px solid var(--gold);
+    margin-left: -9px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    transform-origin: bottom center;
+}
+
+.mini-card-back:first-child {
+    margin-left: 0;
+}
+
+/* ============================================================================
+   CLEAN CENTER BATTLEFIELD
+   ============================================================================ */
+.battle-arena-center {
+    position: absolute;
+    top: 47%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 64%;
+    min-height: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.center-hint-text {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 8px 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.battle-pairs-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+}
+
+.battle-pair-slot {
+    position: relative;
+    width: 96px;
+    height: 142px;
+    animation: popCardIn 0.2s ease-out;
+}
+
+@keyframes popCardIn {
+    from { transform: scale(0.8) translateY(-12px); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.pair-attack-slot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.battle-pair-slot.unbeaten-pair .pair-attack-slot .playing-card {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.65), 0 0 16px rgba(236, 201, 75, 0.75);
+}
+
+.pair-defense-slot {
+    position: absolute;
+    top: 22px;
+    left: 18px;
+    z-index: 2;
+    transform: rotate(8deg);
+    animation: slapDefense 0.2s ease-out;
+}
+
+@keyframes slapDefense {
+    from { transform: scale(1.2) rotate(16deg); opacity: 0.6; }
+    to   { transform: scale(1) rotate(8deg); opacity: 1; }
+}
+
+/* ============================================================================
+   PLAYING CARDS
+   ============================================================================ */
+.playing-card {
+    position: relative;
+    width: 88px;
+    height: 126px;
+    background: #fcfaf5;
+    border-radius: 10px;
+    border: 1.5px solid #d6cbb9;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.card-inner-frame {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.playing-card.is-personal-trump {
+    border: 2px solid #d69e2e;
+    background: linear-gradient(165deg, #ffffff 0%, #fef3c7 100%);
+}
+
+.card-trump-crown {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #ecc94b;
+    color: #0f172a;
+    font-size: 0.5rem;
+    font-weight: 900;
+    padding: 1px 4px;
+    border-radius: 3px;
+    z-index: 4;
+}
+
+.card-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    width: 20px;
+    z-index: 3;
+}
+
+.card-corner.top-left { align-self: flex-start; }
+.card-corner.bottom-right { align-self: flex-end; transform: rotate(180deg); }
+
+.corner-rank {
+    font-size: 0.98rem;
+    font-weight: 900;
+}
+
+.corner-suit {
+    font-size: 0.85rem;
+}
+
+.card-center {
+    position: absolute;
+    inset: 18px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-pips-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    align-items: center;
+    justify-items: center;
+    font-size: 1.05rem;
+}
+
+.card-pips-grid.pips-7 .card-pip:nth-child(7),
+.card-pips-grid.pips-9 .card-pip:nth-child(9) {
+    grid-column: span 2;
+}
+
+.card-court-art {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.court-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.court-emblem {
+    position: relative;
+    z-index: 2;
+    font-size: 1.85rem;
+}
+
+.ace-giant-symbol {
+    position: relative;
+    z-index: 2;
+    font-size: 2.5rem;
+}
+
+.court-title {
+    position: absolute;
+    bottom: 2px;
+    font-size: 0.52rem;
+    font-weight: 900;
+    color: #744210;
+    background: rgba(254, 243, 199, 0.9);
+    padding: 0 4px;
+    border-radius: 3px;
+    z-index: 2;
+}
+
+/* ============================================================================
+   SIZNING KARTALARINGIZ VA TUGMALAR (BOTTOM)
+   ============================================================================ */
+.human-hand-cards {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 138px;
+    padding: 6px;
+}
+
+.human-hand-cards .playing-card {
+    margin: 0 -3px;
+}
+
+.human-hand-cards .playing-card.is-playable {
+    transform: translateY(-10px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), 0 0 0 2px #4ade80;
+}
+
+.human-hand-cards .playing-card.is-playable:hover {
+    transform: translateY(-22px) scale(1.07);
+    z-index: 30;
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.8), 0 0 0 2.5px var(--gold-light);
+}
+
+.human-hand-cards .playing-card:not(.is-playable) {
+    filter: brightness(0.75);
+}
+
+.human-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.human-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 9px 22px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    background: rgba(15, 23, 42, 0.9);
+    color: #fff;
+    transition: all 0.2s;
+}
+
+.action-btn:disabled {
+    opacity: 0.28;
+    cursor: not-allowed;
+}
+
+.btn-glow-ready {
+    background: #059669;
+    border-color: #6ee7b7;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+.btn-danger-ready {
+    background: #dc2626;
+    border-color: #fca5a5;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+}
+
+.shake-card {
+    animation: shakeError 0.3s ease;
+}
+
+@keyframes shakeError {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+/* ============================================================================
+   MODALS
+   ============================================================================ */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 15, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal-window {
+    background: #0f172a;
+    border: 2px solid rgba(236, 201, 75, 0.45);
+    border-radius: 20px;
+    max-width: 560px;
+    width: 100%;
+    padding: 26px 30px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+}
+
+.modal-header-center {
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+.modal-header-center h1, .modal-header-center h2 {
+    font-size: 1.5rem;
+    color: var(--gold-light);
+    margin-bottom: 4px;
+}
+
+.modal-header-center p {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.primary-cta-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, #ecc94b, #b7791f);
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.burn-stage {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: rgba(127, 29, 29, 0.25);
+    border: 1px solid #ef4444;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.fire-overlay {
+    margin-top: 6px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-align: center;
+}
+
+.round-standings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.standing-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(30, 41, 59, 0.6);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.84rem;
+}
+
+.st-trumps-row {
+    display: flex;
+    gap: 4px;
+}
+
+.st-card-chip {
+    font-size: 0.7rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+}
+
+.chip-intact { background: rgba(236, 201, 75, 0.2); color: var(--gold-light); }
+.chip-burned { background: rgba(239, 68, 68, 0.2); color: #f87171; text-decoration: line-through; opacity: 0.5; }
+
+.rules-simple-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #e2e8f0;
+    margin-bottom: 20px;
+}
+
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 90;
+    pointer-events: none;
+}
+
+.game-toast {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1.5px solid var(--gold);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* ============================================================================
+   ONLINE MULTIPLAYER & QR MODAL
+   ============================================================================ */
+.modal-window-wide {
+    max-width: 580px;
+    position: relative;
+}
+
+.modal-close-corner {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-close-corner:hover {
+    color: #fff;
+}
+
+.multiplayer-tabs-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: var(--gold);
+    color: #0f172a;
+    box-shadow: 0 2px 10px rgba(214, 158, 46, 0.3);
+}
+
+.qr-code-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.qr-box-wrapper {
+    background: #fff;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qr-scan-instruction {
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    text-align: center;
+    max-width: 380px;
+}
+
+.room-code-badge-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(236, 201, 75, 0.3);
+    border-radius: 12px;
+    padding: 10px 18px;
+    margin-bottom: 18px;
+}
+
+.code-title {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.code-digits {
+    font-family: monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--gold-light);
+    letter-spacing: 4px;
+}
+
+.action-mini-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-mini-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+.action-mini-btn.btn-highlight {
+    background: var(--gold);
+    color: #0f172a;
+    font-weight: 800;
+    border-color: var(--gold-light);
+}
+
+.lobby-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.lobby-slot-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lobby-slot-card.slot-me {
+    border-color: var(--gold);
+    background: rgba(236, 201, 75, 0.08);
+}
+
+.slot-num {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+.slot-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+.slot-badge {
+    align-self: flex-start;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+.slot-badge.connected {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+.slot-badge.bot {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.join-form-box {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.form-group-label {
+    font-size: 0.84rem;
+    color: #cbd5e1;
+    font-weight: 600;
+}
+
+.styled-text-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255, 255, 255, 0.16);
+    background: rgba(15, 23, 42, 0.8);
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.styled-text-input:focus {
+    border-color: var(--gold);
+}
+
+.join-status-msg {
+    min-height: 24px;
+    font-size: 0.85rem;
+    text-align: center;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 10px;
+}
+.join-status-msg.status-info {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+}
+.join-status-msg.status-success {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+.join-status-msg.status-error {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+}
+
