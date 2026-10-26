@@ -24,6 +24,7 @@ const BOUT_PHASE = {
     DEFENSE: 'DEFENSE',                   // Defender must beat the active attack card or Take
     PRIMARY_PODKID: 'PRIMARY_PODKID',     // Primary attacker can throw matching rank or Pass
     SECONDARY_PODKID: 'SECONDARY_PODKID', // Left neighbor can throw matching rank or Pass (Primary is locked out!)
+    TAKING_PODKID: 'TAKING_PODKID',       // Defender declared Take: all 3 other players in clockwise order can throw matching cards
     ROUND_OVER: 'ROUND_OVER',
     GAME_OVER: 'GAME_OVER'
 };
@@ -52,6 +53,10 @@ class FourTrumpsEngine {
 
         this.primaryPassed = false;
         this.secondaryPassed = false;
+        this.takingAttackerId = null;
+        this.takingAttackersQueue = [];
+        this.takingAttackerIndex = 0;
+        this.takingDefenderLimit = 6;
         this.phase = BOUT_PHASE.SELECT_SUIT;
 
         this.roundWinnerId = null;
@@ -294,6 +299,12 @@ class FourTrumpsEngine {
             }
         }
 
+        this.primaryPassed = false;
+        this.secondaryPassed = false;
+        this.takingAttackerId = null;
+        this.takingAttackersQueue = [];
+        this.takingAttackerIndex = 0;
+        this.takingDefenderLimit = 6;
         this.phase = BOUT_PHASE.INITIAL_ATTACK;
     }
 
@@ -306,6 +317,8 @@ class FourTrumpsEngine {
                 return this.defenderId;
             case BOUT_PHASE.SECONDARY_PODKID:
                 return this.secondaryAttackerId;
+            case BOUT_PHASE.TAKING_PODKID:
+                return this.takingAttackerId;
             default:
                 return null;
         }
@@ -345,15 +358,20 @@ class FourTrumpsEngine {
                 }
                 return { valid: false, reason: "Hozir chap tarafdagi o'yinchining navbati!" };
             }
+        } else if (this.phase === BOUT_PHASE.TAKING_PODKID) {
+            if (playerId !== this.takingAttackerId) {
+                return { valid: false, reason: "Hozir sizning karta qo'shish navbatingiz emas!" };
+            }
         } else {
             return { valid: false, reason: "Hozir hujum qilish bosqichi emas!" };
         }
 
         const defender = this.players[this.defenderId];
-        if (this.tablePairs.length >= 6) {
+        const attackCardsCount = this.tablePairs.filter(p => p.attack).length;
+        if (attackCardsCount >= this.takingDefenderLimit || this.tablePairs.length >= 6) {
             return { valid: false, reason: "Bitta hujumda maksimal 6 ta karta tashlash mumkin!" };
         }
-        if (defender.hand.length === 0) {
+        if (this.phase !== BOUT_PHASE.TAKING_PODKID && defender.hand.length === 0) {
             return { valid: false, reason: "Himoyachining qo'lida karta qolmadi!" };
         }
 
@@ -434,6 +452,16 @@ class FourTrumpsEngine {
         });
 
         this.checkPlayerOut(player);
+
+        if (this.phase === BOUT_PHASE.TAKING_PODKID) {
+            const attackCardsCount = this.tablePairs.filter(p => p.attack).length;
+            if (attackCardsCount >= this.takingDefenderLimit || this.tablePairs.length >= 6) {
+                this.finishDefenderTake();
+                return { success: true, card, finishedTaking: true };
+            }
+            return { success: true, card, isTaking: true };
+        }
+
         this.phase = BOUT_PHASE.DEFENSE;
         return { success: true, card };
     }
@@ -499,6 +527,16 @@ class FourTrumpsEngine {
     }
 
     declarePass(playerId) {
+        if (this.phase === BOUT_PHASE.TAKING_PODKID && playerId === this.takingAttackerId) {
+            this.takingAttackerIndex++;
+            if (this.takingAttackerIndex < this.takingAttackersQueue.length) {
+                this.takingAttackerId = this.takingAttackersQueue[this.takingAttackerIndex];
+                return { success: true, isTaking: true, nextAttackerId: this.takingAttackerId };
+            }
+            this.finishDefenderTake();
+            return { success: true, finishedTaking: true };
+        }
+
         if (this.phase === BOUT_PHASE.PRIMARY_PODKID && playerId === this.primaryAttackerId) {
             this.primaryPassed = true;
 
@@ -529,6 +567,39 @@ class FourTrumpsEngine {
         }
 
         const defender = this.players[this.defenderId];
+        const currentUnbeaten = this.tablePairs.filter(p => !p.defense).length;
+        this.takingDefenderLimit = Math.min(6, defender.hand.length + currentUnbeaten);
+
+        // Build list of all active non-defending players in clockwise order starting from primaryAttackerId
+        const order = [];
+        let curr = this.primaryAttackerId;
+        for (let i = 0; i < 4; i++) {
+            const p = this.players[curr];
+            if (curr !== this.defenderId && !p.eliminated && !p.outOfRound && p.hand.length > 0) {
+                if (!order.includes(curr)) order.push(curr);
+            }
+            curr = (curr + 1) % 4;
+        }
+
+        if (order.length === 0) {
+            this.finishDefenderTake();
+            return { success: true, finishedTaking: true };
+        }
+
+        this.phase = BOUT_PHASE.TAKING_PODKID;
+        this.takingAttackersQueue = order;
+        this.takingAttackerIndex = 0;
+        this.takingAttackerId = this.takingAttackersQueue[0];
+
+        return {
+            success: true,
+            isTaking: true,
+            currentAttackerId: this.takingAttackerId
+        };
+    }
+
+    finishDefenderTake() {
+        const defender = this.players[this.defenderId];
         for (const pair of this.tablePairs) {
             if (pair.attack) defender.hand.push(pair.attack);
             if (pair.defense) defender.hand.push(pair.defense);
@@ -541,12 +612,12 @@ class FourTrumpsEngine {
         this.performDobor();
 
         if (this.checkAndHandleRoundEnd()) {
-            return { success: true, roundEnded: true };
+            return { roundEnded: true };
         }
 
         const nextAttackerId = this.getNextRoundPlayerId(this.defenderId);
         this.setupBout(nextAttackerId);
-        return { success: true, roundEnded: false };
+        return { roundEnded: false };
     }
 
     resolveBita() {
@@ -697,6 +768,10 @@ class FourTrumpsEngine {
             bitaPile: [...this.bitaPile],
             lastDealDistribution: this.lastDealDistribution,
             tablePairs: this.tablePairs,
+            takingAttackerId: this.takingAttackerId,
+            takingAttackersQueue: this.takingAttackersQueue,
+            takingAttackerIndex: this.takingAttackerIndex,
+            takingDefenderLimit: this.takingDefenderLimit,
             roundWinnerId: this.roundWinnerId,
             lastRoundLoserId: this.lastRoundLoserId,
             lastBurnedCard: this.lastBurnedCard,
@@ -729,6 +804,10 @@ class FourTrumpsEngine {
         this.oppositeBlockedId = state.oppositeBlockedId;
         this.lastDealDistribution = state.lastDealDistribution;
         this.tablePairs = state.tablePairs || [];
+        this.takingAttackerId = state.takingAttackerId !== undefined ? state.takingAttackerId : null;
+        this.takingAttackersQueue = state.takingAttackersQueue || [];
+        this.takingAttackerIndex = state.takingAttackerIndex || 0;
+        this.takingDefenderLimit = state.takingDefenderLimit || 6;
         this.roundWinnerId = state.roundWinnerId;
         this.lastRoundLoserId = state.lastRoundLoserId;
         this.lastBurnedCard = state.lastBurnedCard;

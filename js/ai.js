@@ -113,6 +113,31 @@ class BotAI {
             };
         }
 
+        // 4. TAKING_PODKID: Defender has declared Take, other players can dump matching cards!
+        if (phase === PHASE_ENUM.TAKING_PODKID && botId === engine.takingAttackerId) {
+            const validPodkids = bot.hand.filter(
+                c => engine.canAttackWithCard(botId, c).valid
+            );
+
+            if (validPodkids.length === 0) {
+                return { action: 'pass' };
+            }
+
+            // Dump non-trump cards of matching ranks first
+            const nonTrumps = validPodkids.filter(c => c.suit !== botTrump);
+            if (nonTrumps.length > 0) {
+                nonTrumps.sort((a, b) => a.rank - b.rank);
+                return { action: 'attack', cardId: nonTrumps[0].id };
+            }
+
+            // If only personal trumps match, bot only throws if low rank and late game
+            if (engine.deck.length === 0 && validPodkids[0].rank <= 8) {
+                return { action: 'attack', cardId: validPodkids[0].id };
+            }
+
+            return { action: 'pass' };
+        }
+
         return null;
     }
 

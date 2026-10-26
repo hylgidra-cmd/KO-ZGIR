@@ -250,6 +250,15 @@ class GameUI {
             this.elTurnBanner.textContent = turnPlayer.id === 0
                 ? `Chap taraf navbati: Mos karta tashlang yoki «Bita» qiling`
                 : `${turnPlayer.name} karta tashlamoqda...`;
+        } else if (this.engine.phase === window.BOUT_PHASE.TAKING_PODKID) {
+            const mySeatId = this.getMySeatId();
+            if (turnPlayerId === mySeatId) {
+                this.elTurnBanner.textContent = `📥 ${defender.name} ko'tarmoqda! Mos karta tashlang yoki «Bo'ldi» bosing`;
+            } else if (mySeatId === this.engine.defenderId) {
+                this.elTurnBanner.textContent = `📥 Siz ko'tardingiz. Boshqa o'yinchilar karta qo'shmoqda...`;
+            } else {
+                this.elTurnBanner.textContent = `📥 ${defender.name} ko'tarmoqda: ${turnPlayer ? turnPlayer.name : ''} karta qo'shmoqda...`;
+            }
         }
     }
 
@@ -318,7 +327,12 @@ class GameUI {
     getPlayerBoutRoleBadge(playerId) {
         const p = this.engine.players[playerId];
         if (p.eliminated) return { text: 'Chiqqan', cssClass: 'role-eliminated' };
-        if (p.outOfRound) return { text: 'Qutuldi', cssClass: 'role-safe' };
+        if (this.engine.phase === window.BOUT_PHASE.TAKING_PODKID) {
+            if (playerId === this.engine.defenderId) return { text: '📥 Olyapti', cssClass: 'role-defender' };
+            if (playerId === this.engine.takingAttackerId) return { text: "⚔️ Qo'shish", cssClass: 'role-secondary-active' };
+            return { text: '⏳ Kutilmoqda', cssClass: 'role-secondary-wait' };
+        }
+
         if (playerId === this.engine.defenderId) return { text: '🛡️ Himoya', cssClass: 'role-defender' };
 
         if (playerId === this.engine.primaryAttackerId) {
@@ -455,7 +469,8 @@ class GameUI {
                 } else if (
                     this.engine.phase === window.BOUT_PHASE.INITIAL_ATTACK ||
                     this.engine.phase === window.BOUT_PHASE.PRIMARY_PODKID ||
-                    this.engine.phase === window.BOUT_PHASE.SECONDARY_PODKID
+                    this.engine.phase === window.BOUT_PHASE.SECONDARY_PODKID ||
+                    this.engine.phase === window.BOUT_PHASE.TAKING_PODKID
                 ) {
                     isPlayable = this.engine.canAttackWithCard(mySeatId, card).valid;
                 }
@@ -479,6 +494,18 @@ class GameUI {
         const mySeatId = this.getMySeatId();
         const isMyTurn = this.engine.getCurrentTurnPlayerId() === mySeatId;
 
+        if (this.engine.phase === window.BOUT_PHASE.TAKING_PODKID) {
+            const canPass = isMyTurn;
+            this.btnPass.disabled = !canPass;
+            this.btnPass.classList.toggle('btn-glow-ready', canPass);
+            this.btnPass.textContent = "✋ Bo'ldi (Boshqa yo'q)";
+
+            this.btnTake.disabled = true;
+            this.btnTake.classList.remove('btn-danger-ready');
+            this.btnTake.textContent = "📥 Ko'tarilyapti...";
+            return;
+        }
+
         const canPass = isMyTurn && (
             this.engine.phase === window.BOUT_PHASE.PRIMARY_PODKID ||
             this.engine.phase === window.BOUT_PHASE.SECONDARY_PODKID
@@ -492,6 +519,7 @@ class GameUI {
         const canTake = isMyTurn && this.engine.phase === window.BOUT_PHASE.DEFENSE;
         this.btnTake.disabled = !canTake;
         this.btnTake.classList.toggle('btn-danger-ready', canTake);
+        this.btnTake.textContent = "📥 Ko'tarish (Olish)";
     }
 
     onHumanCardClick(cardId, cardEl, event) {
@@ -567,6 +595,9 @@ class GameUI {
         const res = this.engine.defenderTakesCards();
         if (!res.success) return;
         window.soundFX.playTake();
+        if (res.isTaking) {
+            this.showToast("Siz ko'tardingiz! Boshqa o'yinchilar karta qo'shmoqda...");
+        }
         this.afterMoveUpdate();
     }
 
