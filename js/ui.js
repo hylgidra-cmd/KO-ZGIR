@@ -18,7 +18,27 @@ class GameUI {
         this.initDOMReferences();
         this.bindEvents();
         this.initParticleCanvas();
+
+        if (typeof window.MultiplayerManager !== 'undefined') {
+            this.multiplayer = new window.MultiplayerManager(this);
+        }
+
         this.showTableSuitPicker();
+    }
+
+    getMySeatId() {
+        if (this.multiplayer && this.multiplayer.isGuest) {
+            return this.multiplayer.mySeatId;
+        }
+        return 0;
+    }
+
+    isSeatOccupiedByHuman(seatId) {
+        if (seatId === 0) return true;
+        if (this.multiplayer && this.multiplayer.playerSlots && this.multiplayer.playerSlots[seatId]) {
+            return this.multiplayer.playerSlots[seatId].isConnected && !this.multiplayer.playerSlots[seatId].isBot;
+        }
+        return false;
     }
 
     initDOMReferences() {
@@ -153,6 +173,9 @@ class GameUI {
         }
 
         this.renderAll();
+        if (this.multiplayer && this.multiplayer.isHost) {
+            this.multiplayer.broadcastState();
+        }
         this.scheduleBotTurnIfNeeded();
     }
 
@@ -404,7 +427,8 @@ class GameUI {
     }
 
     renderHumanHand() {
-        const human = this.engine.players[0];
+        const mySeatId = this.getMySeatId();
+        const human = this.engine.players[mySeatId];
         const container = document.getElementById('human-hand-cards');
         if (!container || !human) return;
 
@@ -413,13 +437,13 @@ class GameUI {
             return;
         }
         if (human.outOfRound) {
-            container.innerHTML = `<div class="center-hint-text">🏆 Siz qutuldingiz! Botlar o'yinni yakunlamoqda...</div>`;
+            container.innerHTML = `<div class="center-hint-text">🏆 Siz qutuldingiz! Boshqa o'yinchilar davom etmoqda...</div>`;
             return;
         }
 
-        const isMyTurn = this.engine.getCurrentTurnPlayerId() === 0;
+        const isMyTurn = this.engine.getCurrentTurnPlayerId() === mySeatId;
         const openPair = this.engine.tablePairs.find(p => p.defense === null);
-        const myEffectiveTrump = this.engine.getEffectiveTrumpSuit(0);
+        const myEffectiveTrump = this.engine.getEffectiveTrumpSuit(mySeatId);
 
         container.innerHTML = human.hand.map(card => {
             const isTrump = card.suit === myEffectiveTrump;
@@ -427,13 +451,13 @@ class GameUI {
 
             if (isMyTurn) {
                 if (this.engine.phase === window.BOUT_PHASE.DEFENSE && openPair) {
-                    isPlayable = this.engine.canBeatCard(0, openPair.attack, card).valid;
+                    isPlayable = this.engine.canBeatCard(mySeatId, openPair.attack, card).valid;
                 } else if (
                     this.engine.phase === window.BOUT_PHASE.INITIAL_ATTACK ||
                     this.engine.phase === window.BOUT_PHASE.PRIMARY_PODKID ||
                     this.engine.phase === window.BOUT_PHASE.SECONDARY_PODKID
                 ) {
-                    isPlayable = this.engine.canAttackWithCard(0, card).valid;
+                    isPlayable = this.engine.canAttackWithCard(mySeatId, card).valid;
                 }
             }
 
@@ -452,7 +476,8 @@ class GameUI {
     }
 
     renderActionButtons() {
-        const isMyTurn = this.engine.getCurrentTurnPlayerId() === 0;
+        const mySeatId = this.getMySeatId();
+        const isMyTurn = this.engine.getCurrentTurnPlayerId() === mySeatId;
 
         const canPass = isMyTurn && (
             this.engine.phase === window.BOUT_PHASE.PRIMARY_PODKID ||
@@ -470,13 +495,21 @@ class GameUI {
     }
 
     onHumanCardClick(cardId, cardEl, event) {
-        if (this.engine.getCurrentTurnPlayerId() !== 0) {
+        const mySeatId = this.getMySeatId();
+        if (this.engine.getCurrentTurnPlayerId() !== mySeatId) {
             window.soundFX.playError();
             return;
         }
 
+        // If Guest in Online Multiplayer, send move to Host over WebRTC
+        if (this.multiplayer && this.multiplayer.isGuest) {
+            const action = this.engine.phase === window.BOUT_PHASE.DEFENSE ? 'defend' : 'attack';
+            this.multiplayer.sendMoveToHost(action, cardId);
+            return;
+        }
+
         if (this.engine.phase === window.BOUT_PHASE.DEFENSE) {
-            const res = this.engine.playDefenseCard(0, cardId);
+            const res = this.engine.playDefenseCard(mySeatId, cardId);
             if (!res.success) {
                 window.soundFX.playError();
                 cardEl.classList.add('shake-card');
@@ -493,7 +526,7 @@ class GameUI {
             return;
         }
 
-        const res = this.engine.playAttackCard(0, cardId);
+        const res = this.engine.playAttackCard(mySeatId, cardId);
         if (!res.success) {
             window.soundFX.playError();
             cardEl.classList.add('shake-card');
@@ -507,7 +540,15 @@ class GameUI {
     }
 
     onHumanPass() {
-        const res = this.engine.declarePass(0);
+        const mySeatId = this.getMySeatId();
+        if (this.engine.getCurrentTurnPlayerId() !== mySeatId) return;
+
+        if (this.multiplayer && this.multiplayer.isGuest) {
+            this.multiplayer.sendMoveToHost('pass');
+            return;
+        }
+
+        const res = this.engine.declarePass(mySeatId);
         if (!res.success) return;
         if (res.bita) window.soundFX.playBita();
         else window.soundFX.playPass();
@@ -515,6 +556,14 @@ class GameUI {
     }
 
     onHumanTake() {
+        const mySeatId = this.getMySeatId();
+        if (this.engine.getCurrentTurnPlayerId() !== mySeatId) return;
+
+        if (this.multiplayer && this.multiplayer.isGuest) {
+            this.multiplayer.sendMoveToHost('take');
+            return;
+        }
+
         const res = this.engine.defenderTakesCards();
         if (!res.success) return;
         window.soundFX.playTake();
@@ -523,6 +572,10 @@ class GameUI {
 
     afterMoveUpdate() {
         this.renderAll();
+
+        if (this.multiplayer && this.multiplayer.isHost) {
+            this.multiplayer.broadcastState();
+        }
 
         if (this.engine.phase === window.BOUT_PHASE.ROUND_OVER ||
             this.engine.phase === window.BOUT_PHASE.GAME_OVER) {
@@ -542,7 +595,7 @@ class GameUI {
         }
 
         const turnPlayerId = this.engine.getCurrentTurnPlayerId();
-        if (turnPlayerId === null || turnPlayerId === 0) return;
+        if (turnPlayerId === null || this.isSeatOccupiedByHuman(turnPlayerId)) return;
 
         const humanOut = this.engine.players[0].outOfRound || this.engine.players[0].eliminated;
         const delay = humanOut ? 220 : 680;
@@ -683,6 +736,9 @@ class GameUI {
 
         this.engine.startRound(nextRoundNum, starterId, dealerId);
         this.renderAll();
+        if (this.multiplayer && this.multiplayer.isHost) {
+            this.multiplayer.broadcastState();
+        }
         this.scheduleBotTurnIfNeeded();
     }
 

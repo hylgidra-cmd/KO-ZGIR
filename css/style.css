@@ -910,3 +910,225 @@ html, body {
     font-size: 0.85rem;
     font-weight: 600;
 }
+
+/* ============================================================================
+   ONLINE MULTIPLAYER & QR MODAL
+   ============================================================================ */
+.modal-window-wide {
+    max-width: 580px;
+    position: relative;
+}
+
+.modal-close-corner {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.4rem;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-close-corner:hover {
+    color: #fff;
+}
+
+.multiplayer-tabs-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 4px;
+    border-radius: 12px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    background: var(--gold);
+    color: #0f172a;
+    box-shadow: 0 2px 10px rgba(214, 158, 46, 0.3);
+}
+
+.qr-code-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.qr-box-wrapper {
+    background: #fff;
+    padding: 14px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qr-scan-instruction {
+    font-size: 0.88rem;
+    color: #cbd5e1;
+    text-align: center;
+    max-width: 380px;
+}
+
+.room-code-badge-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(236, 201, 75, 0.3);
+    border-radius: 12px;
+    padding: 10px 18px;
+    margin-bottom: 18px;
+}
+
+.code-title {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.code-digits {
+    font-family: monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: var(--gold-light);
+    letter-spacing: 4px;
+}
+
+.action-mini-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.action-mini-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+.action-mini-btn.btn-highlight {
+    background: var(--gold);
+    color: #0f172a;
+    font-weight: 800;
+    border-color: var(--gold-light);
+}
+
+.lobby-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.lobby-slot-card {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.lobby-slot-card.slot-me {
+    border-color: var(--gold);
+    background: rgba(236, 201, 75, 0.08);
+}
+
+.slot-num {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+.slot-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+.slot-badge {
+    align-self: flex-start;
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+.slot-badge.connected {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+.slot-badge.bot {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
+}
+
+.join-form-box {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.form-group-label {
+    font-size: 0.84rem;
+    color: #cbd5e1;
+    font-weight: 600;
+}
+
+.styled-text-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255, 255, 255, 0.16);
+    background: rgba(15, 23, 42, 0.8);
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.styled-text-input:focus {
+    border-color: var(--gold);
+}
+
+.join-status-msg {
+    min-height: 24px;
+    font-size: 0.85rem;
+    text-align: center;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 10px;
+}
+.join-status-msg.status-info {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+}
+.join-status-msg.status-success {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+}
+.join-status-msg.status-error {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
+}
+

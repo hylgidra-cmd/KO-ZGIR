@@ -692,9 +692,68 @@ class FourTrumpsEngine {
             secondaryAttackerId: this.secondaryAttackerId,
             oppositeBlockedId: this.oppositeBlockedId,
             deckCount: this.deck.length,
+            deck: [...this.deck],
             bitaCount: this.bitaPile.length,
-            lastDealDistribution: this.lastDealDistribution
+            bitaPile: [...this.bitaPile],
+            lastDealDistribution: this.lastDealDistribution,
+            tablePairs: this.tablePairs,
+            roundWinnerId: this.roundWinnerId,
+            lastRoundLoserId: this.lastRoundLoserId,
+            lastBurnedCard: this.lastBurnedCard,
+            tournamentWinnerId: this.tournamentWinnerId,
+            eliminatedCards: Array.from(this.eliminatedCards),
+            players: this.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                seat: p.seat,
+                trumpSuit: p.trumpSuit,
+                lostTrumps: [...p.lostTrumps],
+                eliminated: p.eliminated,
+                outOfRound: p.outOfRound,
+                isHuman: p.isHuman,
+                hand: [...p.hand]
+            }))
         };
+    }
+
+    deserializeState(state) {
+        if (!state) return;
+        this.roundNumber = state.roundNumber;
+        this.phase = state.phase;
+        this.openTrumpCard = state.openTrumpCard;
+        this.sharedTrumpSuit = state.sharedTrumpSuit;
+        this.dealerId = state.dealerId;
+        this.primaryAttackerId = state.primaryAttackerId;
+        this.defenderId = state.defenderId;
+        this.secondaryAttackerId = state.secondaryAttackerId;
+        this.oppositeBlockedId = state.oppositeBlockedId;
+        this.lastDealDistribution = state.lastDealDistribution;
+        this.tablePairs = state.tablePairs || [];
+        this.roundWinnerId = state.roundWinnerId;
+        this.lastRoundLoserId = state.lastRoundLoserId;
+        this.lastBurnedCard = state.lastBurnedCard;
+        this.tournamentWinnerId = state.tournamentWinnerId;
+
+        this.deck = state.deck ? [...state.deck] : (state.deckCount ? new Array(state.deckCount).fill({ suit: 'diamonds', rank: 6 }) : []);
+        this.bitaPile = state.bitaPile ? [...state.bitaPile] : (state.bitaCount ? new Array(state.bitaCount).fill({ suit: 'diamonds', rank: 6 }) : []);
+
+        if (state.eliminatedCards) {
+            this.eliminatedCards = new Set(state.eliminatedCards);
+        }
+
+        if (state.players && state.players.length === 4) {
+            this.players = state.players.map(p => ({
+                id: p.id,
+                name: p.name,
+                seat: p.seat,
+                trumpSuit: p.trumpSuit,
+                lostTrumps: [...p.lostTrumps],
+                eliminated: p.eliminated,
+                outOfRound: p.outOfRound,
+                isHuman: p.isHuman,
+                hand: [...p.hand]
+            }));
+        }
     }
 }
 

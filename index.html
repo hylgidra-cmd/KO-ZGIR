@@ -24,10 +24,11 @@
         </div>
 
         <div class="top-nav-actions">
+            <button class="nav-btn nav-btn-gold" id="btn-open-multiplayer" title="4 kishilik onlayn xona va QR kod">🌐 Onlayn Xona (QR)</button>
             <button class="nav-btn nav-btn-gold hidden" id="btn-fast-finish-round" title="Joriy o'yinni tezkor yakunlash">⏩ O'yinni Tezkor Tugatish</button>
             <button class="nav-btn" id="btn-toggle-sound" title="Ovozni yoqish/o'chirish">🔊</button>
             <button class="nav-btn" id="btn-open-rules">📜 Qoidalar</button>
-            <button class="nav-btn nav-btn-gold" id="btn-new-game-top">🔄 Boshidan</button>
+            <button class="nav-btn" id="btn-new-game-top">🔄 Boshidan</button>
         </div>
     </header>
 
@@ -238,11 +239,81 @@
         </div>
     </div>
 
+    <!-- ====================================================================
+         ONLAYN XONA VA QR KOD OYNASI (4 O'YINCHI)
+         ==================================================================== -->
+    <div class="modal-backdrop hidden" id="modal-multiplayer">
+        <div class="modal-window modal-window-wide">
+            <button class="modal-close-corner" id="btn-close-multiplayer" title="Yopish">✕</button>
+
+            <div class="modal-header-center">
+                <h2>🌐 4 KO'ZIR — Onlayn Xona</h2>
+                <p>Do'stlaringiz bilan 4 kishi jonli o'ynang yoki QR kod orqali ulaning</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="multiplayer-tabs-row">
+                <button class="tab-btn active" id="tab-btn-host">👑 Xona Ochish (Host)</button>
+                <button class="tab-btn" id="tab-btn-join">🔌 Xonaga Ulanish (PIN)</button>
+            </div>
+
+            <!-- TAB 1: HOST PANEL -->
+            <div id="panel-host-room" class="panel-host-room">
+                <div class="qr-code-section">
+                    <div class="qr-box-wrapper" id="room-qr-canvas-box"></div>
+                    <div class="qr-scan-instruction">
+                        📱 <strong>Telefon kamerasini qarating:</strong> do'stlaringiz kamerani shu QR kodga qaratib bir zumda stolingizga kiradi!
+                    </div>
+                </div>
+
+                <div class="room-code-badge-bar">
+                    <span class="code-title">Xona PIN:</span>
+                    <strong class="code-digits" id="host-room-code-display">----</strong>
+                    <button class="action-mini-btn" id="btn-copy-room-code">📋 Nusxalash</button>
+                    <button class="action-mini-btn btn-highlight" id="btn-copy-room-link">🔗 Havolani Nusxalash</button>
+                </div>
+
+                <div class="lobby-grid" id="lobby-players-slots"></div>
+
+                <button class="primary-cta-btn" id="btn-start-multiplayer-host">
+                    🚀 O'yinni Boshlash (Stolga O'tish)
+                </button>
+                <p style="text-align:center; font-size: 0.78rem; color: #94a3b8; margin-top: 8px;">
+                    Do'stlaringiz to'liq kirmasa ham bo'sh o'rinlarni aqlli botlar to'ldiradi.
+                </p>
+            </div>
+
+            <!-- TAB 2: JOIN PANEL -->
+            <div id="panel-join-room" class="panel-join-room hidden">
+                <div class="join-form-box">
+                    <div>
+                        <div class="form-group-label" style="margin-bottom: 6px;">Ismingiz:</div>
+                        <input type="text" class="styled-text-input" id="join-player-name-input" placeholder="Ismingizni yozing (Masalan: Sardor)" maxlength="16" />
+                    </div>
+
+                    <div>
+                        <div class="form-group-label" style="margin-bottom: 6px;">4 xonali Xona Kodi:</div>
+                        <input type="text" class="styled-text-input" id="join-room-code-input" placeholder="Masalan: 4821" maxlength="6" style="font-family: monospace; font-size: 1.3rem; letter-spacing: 3px;" />
+                    </div>
+
+                    <button class="primary-cta-btn" id="btn-submit-join-room">
+                        🔌 Xonaga Ulanish
+                    </button>
+
+                    <div id="join-status-feedback" class="join-status-msg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/audio.js"></script>
     <script src="js/cards.js"></script>
     <script src="js/engine.js"></script>
     <script src="js/ai.js"></script>
+    <script src="js/qrcode.min.js"></script>
+    <script src="js/peerjs.min.js"></script>
+    <script src="js/multiplayer.js"></script>
     <script src="js/ui.js"></script>
 </body>
 </html>

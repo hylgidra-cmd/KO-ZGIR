@@ -1,51 +1,161 @@
 {
   "stats": {
-    "totalRoundsPlayed": 1,
+    "totalRoundsPlayed": 12,
     "totalTournamentsCompleted": 0,
-    "totalTrumpsBurned": 0,
+    "totalTrumpsBurned": 10,
     "humanWins": 0,
     "suitPickCounts": {
       "diamonds": 1,
       "spades": 0,
-      "hearts": 0,
+      "hearts": 11,
       "clubs": 1
     }
   },
   "leaderboard": [
     {
       "name": "Siz (Asosiy O'yinchi)",
-      "rating": 1512,
+      "rating": 1532,
       "wins": 0,
-      "roundsWon": 1,
+      "roundsWon": 4,
       "trumpsSaved": 9,
       "badge": "👑 Grandmaster"
     },
     {
       "name": "Jasur (O'ngda)",
-      "rating": 1412,
+      "rating": 1428,
       "wins": 0,
-      "roundsWon": 0,
+      "roundsWon": 2,
       "trumpsSaved": 9,
       "badge": "⚔️ Hujum Ustasi"
     },
     {
       "name": "Sardor (Chapda)",
-      "rating": 1390,
+      "rating": 1394,
       "wins": 0,
-      "roundsWon": 0,
+      "roundsWon": 3,
       "trumpsSaved": 9,
       "badge": "🎯 Podkid Qiroli"
     },
     {
       "name": "Ulug'bek (To'g'rida)",
-      "rating": 1365,
+      "rating": 1369,
       "wins": 0,
-      "roundsWon": 0,
+      "roundsWon": 3,
       "trumpsSaved": 9,
       "badge": "🛡️ Qalqon Sohibi"
     }
   ],
   "matchHistory": [
+    {
+      "id": 1792847931141,
+      "time": "18:18:51",
+      "roundNumber": 10,
+      "winnerName": "Siz",
+      "loserName": "Ulug'bek",
+      "burnedCardText": "Tabbon 9-lik (9♠)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 26
+    },
+    {
+      "id": 1792847884462,
+      "time": "18:18:04",
+      "roundNumber": 9,
+      "winnerName": "Siz",
+      "loserName": "Sardor",
+      "burnedCardText": "G'isht 9-lik (9♦)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 27
+    },
+    {
+      "id": 1792847647812,
+      "time": "18:14:07",
+      "roundNumber": 8,
+      "winnerName": "Ulug'bek",
+      "loserName": "Sardor",
+      "burnedCardText": "G'isht 8-lik (8♦)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 28
+    },
+    {
+      "id": 1792847602271,
+      "time": "18:13:22",
+      "roundNumber": 7,
+      "winnerName": "Siz",
+      "loserName": "Sardor",
+      "burnedCardText": "G'isht 7-lik (7♦)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 29
+    },
+    {
+      "id": 1792847558516,
+      "time": "18:12:38",
+      "roundNumber": 6,
+      "winnerName": "Sardor",
+      "loserName": "Ulug'bek",
+      "burnedCardText": "Tabbon 8-lik (8♠)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 30
+    },
+    {
+      "id": 1792847479593,
+      "time": "18:11:19",
+      "roundNumber": 5,
+      "winnerName": "Jasur",
+      "loserName": "Ulug'bek",
+      "burnedCardText": "Tabbon 7-lik (7♠)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 31
+    },
+    {
+      "id": 1792847383260,
+      "time": "18:09:43",
+      "roundNumber": 4,
+      "winnerName": "Sardor",
+      "loserName": "Ulug'bek",
+      "burnedCardText": "Tabbon 6-lik (6♠)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 32
+    },
+    {
+      "id": 1792847289812,
+      "time": "18:08:09",
+      "roundNumber": 3,
+      "winnerName": "Jasur",
+      "loserName": "Siz",
+      "burnedCardText": "Yurak 6-lik (6♥)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 33
+    },
+    {
+      "id": 1792847056538,
+      "time": "18:04:16",
+      "roundNumber": 2,
+      "winnerName": "Ulug'bek",
+      "loserName": "Jasur",
+      "burnedCardText": "Paxta 6-lik (6♣)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 34
+    },
+    {
+      "id": 1792844766422,
+      "time": "17:26:06",
+      "roundNumber": 1,
+      "winnerName": "Ulug'bek",
+      "loserName": "Sardor",
+      "burnedCardText": "G'isht 6-lik (6♦)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 35
+    },
+    {
+      "id": 1792844663455,
+      "time": "17:24:23",
+      "roundNumber": 0,
+      "winnerName": "Sardor",
+      "loserName": "Siz",
+      "burnedCardText": "0-Raund (Jazosiz)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 36
+    },
     {
       "id": 1792841970240,
       "time": "16:39:30",
