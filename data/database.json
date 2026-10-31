@@ -1,12 +1,12 @@
 {
   "stats": {
-    "totalRoundsPlayed": 12,
+    "totalRoundsPlayed": 13,
     "totalTournamentsCompleted": 0,
     "totalTrumpsBurned": 10,
     "humanWins": 0,
     "suitPickCounts": {
       "diamonds": 1,
-      "spades": 0,
+      "spades": 1,
       "hearts": 11,
       "clubs": 1
     }
@@ -30,15 +30,15 @@
     },
     {
       "name": "Sardor (Chapda)",
-      "rating": 1394,
+      "rating": 1406,
       "wins": 0,
-      "roundsWon": 3,
+      "roundsWon": 4,
       "trumpsSaved": 9,
       "badge": "🎯 Podkid Qiroli"
     },
     {
       "name": "Ulug'bek (To'g'rida)",
-      "rating": 1369,
+      "rating": 1361,
       "wins": 0,
       "roundsWon": 3,
       "trumpsSaved": 9,
@@ -46,6 +46,16 @@
     }
   ],
   "matchHistory": [
+    {
+      "id": 1793011622814,
+      "time": "15:47:02",
+      "roundNumber": 0,
+      "winnerName": "Sardor (Chapda)",
+      "loserName": "Ulug'bek (To'g'rida)",
+      "burnedCardText": "0-Raund (Jazosiz)",
+      "dealDistribution": "6 - 6 - 6 - 6",
+      "remainingDeckTotal": 36
+    },
     {
       "id": 1792847931141,
       "time": "18:18:51",

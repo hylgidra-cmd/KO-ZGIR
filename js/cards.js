@@ -210,19 +210,22 @@ function createCardHTML(card, options = {}) {
         isPersonalTrump = false,
         isPlayable = false,
         small = false,
-        invalidReason = ''
+        invalidReason = '',
+        roundNumber = 1
     } = options;
+
+    const showPersonalCrown = isPersonalTrump && roundNumber >= 1;
 
     const classes = [
         'playing-card',
         `suit-${card.suit}`,
         `color-${card.color}`,
-        isPersonalTrump ? 'is-personal-trump' : '',
+        showPersonalCrown ? 'is-personal-trump' : '',
         isPlayable ? 'is-playable' : '',
         small ? 'card-small' : ''
     ].filter(Boolean).join(' ');
 
-    const trumpBadge = isPersonalTrump
+    const trumpBadge = showPersonalCrown
         ? `<div class="card-trump-crown" title="Sizning shaxsiy ko'ziringiz!">👑 KO'ZIR</div>`
         : '';
 

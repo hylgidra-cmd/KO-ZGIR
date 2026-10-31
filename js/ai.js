@@ -60,7 +60,7 @@ class BotAI {
             const isTrump = bestDefCard.suit === botTrump;
 
             if (isTrump && openPair.attack.suit !== botTrump) {
-                if (bestDefCard.rank === 14 && engine.deck.length > 8 && engine.tablePairs.length === 1 && bot.hand.length <= 5) {
+                if (bestDefCard.rank >= 13 && openPair.attack.rank <= 9 && engine.deck.length > 4) {
                     return { action: 'take' };
                 }
             }

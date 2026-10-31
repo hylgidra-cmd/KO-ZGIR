@@ -284,7 +284,11 @@ class GameUI {
 
             const suitBadgeEl = seatEl.querySelector('.seat-trump-badge');
             if (suitBadgeEl) {
-                suitBadgeEl.innerHTML = `<span class="suit-sym color-${suitObj.color}">${suitObj.symbol}</span> ${suitObj.name}`;
+                if (this.engine.roundNumber === 0) {
+                    suitBadgeEl.innerHTML = `<span class="suit-sym color-${suitObj.color}">${suitObj.symbol}</span> ${suitObj.name} <small style="opacity:0.75">(1-o'yindan)</small>`;
+                } else {
+                    suitBadgeEl.innerHTML = `<span class="suit-sym color-${suitObj.color}">${suitObj.symbol}</span> ${suitObj.name}`;
+                }
             }
 
             const metaEl = seatEl.querySelector('.seat-card-count');
@@ -295,7 +299,7 @@ class GameUI {
             const burnEl = seatEl.querySelector('.trump-NextBurn');
             if (burnEl) {
                 if (this.engine.roundNumber === 0) {
-                    burnEl.textContent = `Tanlagan: ${suitObj.symbol}`;
+                    burnEl.textContent = `0-O'yin (Boshlang'ich Durak)`;
                 } else if (p.lostTrumps.length === 0) {
                     burnEl.textContent = `Ko'zir: 9/9`;
                 } else {
@@ -367,7 +371,8 @@ class GameUI {
             // Round 0 (Oddiy Durak): Show the face-up trump card under the deck!
             this.elOpenGroundTrump.classList.remove('hidden');
             this.elOpenGroundTrump.innerHTML = window.CardsAPI.createCardHTML(this.engine.openTrumpCard, {
-                isPersonalTrump: true
+                isPersonalTrump: false,
+                roundNumber: 0
             });
             const sObj = window.CardsAPI.SUITS[this.engine.openTrumpCard.suit];
             this.elTalonLabel.innerHTML = `Yerdagi Ko'zir: <strong class="color-${sObj.color}">${this.engine.openTrumpCard.label}${sObj.symbol}</strong> (${deckLen} ta)`;
@@ -417,18 +422,21 @@ class GameUI {
 
         this.elTableCenterHint.classList.add('hidden');
         const defTrump = this.engine.getEffectiveTrumpSuit(this.engine.defenderId);
+        const isRound1Plus = this.engine.roundNumber >= 1;
 
         this.elBattlePairs.innerHTML = this.engine.tablePairs.map((pair, idx) => {
-            const attIsTrump = pair.attack.suit === defTrump;
+            const attIsTrump = isRound1Plus && (pair.attack.suit === defTrump);
             const attackHTML = window.CardsAPI.createCardHTML(pair.attack, {
-                isPersonalTrump: attIsTrump
+                isPersonalTrump: attIsTrump,
+                roundNumber: this.engine.roundNumber
             });
 
             let defenseHTML = '';
             if (pair.defense) {
-                const defIsTrump = pair.defense.suit === defTrump;
+                const defIsTrump = isRound1Plus && (pair.defense.suit === defTrump);
                 defenseHTML = `<div class="pair-defense-slot">${window.CardsAPI.createCardHTML(pair.defense, {
-                    isPersonalTrump: defIsTrump
+                    isPersonalTrump: defIsTrump,
+                    roundNumber: this.engine.roundNumber
                 })}</div>`;
             }
 
@@ -458,9 +466,10 @@ class GameUI {
         const isMyTurn = this.engine.getCurrentTurnPlayerId() === mySeatId;
         const openPair = this.engine.tablePairs.find(p => p.defense === null);
         const myEffectiveTrump = this.engine.getEffectiveTrumpSuit(mySeatId);
+        const isRound1Plus = this.engine.roundNumber >= 1;
 
         container.innerHTML = human.hand.map(card => {
-            const isTrump = card.suit === myEffectiveTrump;
+            const isTrump = isRound1Plus && (card.suit === myEffectiveTrump);
             let isPlayable = false;
 
             if (isMyTurn) {
@@ -478,7 +487,8 @@ class GameUI {
 
             return window.CardsAPI.createCardHTML(card, {
                 isPersonalTrump: isTrump,
-                isPlayable
+                isPlayable,
+                roundNumber: this.engine.roundNumber
             });
         }).join('');
 
